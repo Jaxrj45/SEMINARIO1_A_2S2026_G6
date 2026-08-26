@@ -2,6 +2,7 @@ import re
 import hashlib
 from flask import Blueprint, request, jsonify
 from src.db import get_db_connection
+from src.s3_utils import build_image_url
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -58,7 +59,7 @@ def register():
                     "id_usuario": nuevo_id,
                     "correo": correo,
                     "nombre_completo": nombre_completo,
-                    "foto_perfil": foto_perfil,
+                    "foto_perfil": build_image_url(foto_perfil),
                 }
             ),
             201,
@@ -112,7 +113,7 @@ def login():
                     "id_usuario": usuario["id_usuario"],
                     "correo": usuario["correo"],
                     "nombre_completo": usuario["nombre_completo"],
-                    "foto_perfil": usuario["foto_perfil"],
+                    "foto_perfil": build_image_url(usuario["foto_perfil"]),
                 }
             ),
             200,

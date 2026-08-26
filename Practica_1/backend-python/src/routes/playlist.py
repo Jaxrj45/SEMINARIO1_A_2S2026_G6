@@ -1,7 +1,7 @@
 import psycopg2
 import psycopg2.errors
 from flask import Blueprint, request, jsonify
-
+from src.s3_utils import build_image_url
 from src.db import get_db_connection
 
 playlist_bp = Blueprint("playlist", __name__, url_prefix="/playlist")
@@ -98,6 +98,7 @@ def get_playlist():
 
         for p in peliculas:
             p["agregada_en"] = p["agregada_en"].isoformat()
+            p["poster"] = build_image_url(p["poster"])
 
         return jsonify(peliculas), 200
 
@@ -117,8 +118,6 @@ def remove_from_playlist(id_lista):
     cursor = conn.cursor()
 
     try:
-        # El WHERE incluye id_usuario para que un usuario NO pueda borrar
-        # una entrada de la lista de otro usuario adivinando el id_lista.
         cursor.execute(
             "DELETE FROM lista_reproduccion WHERE id_lista = %s AND id_usuario = %s",
             (id_lista, id_usuario),

@@ -8,8 +8,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-from src.db import get_db_connection
 from src.routes.auth import auth_bp
+from src.routes.movies import movie_bp
 
 load_dotenv()
 
@@ -21,17 +21,12 @@ PORT = int(os.environ.get("PORT", 5000))
 
 # Registro del blueprint de autenticación
 app.register_blueprint(auth_bp, url_prefix="/auth")
-
-
-# Regex simple para validar formato de correo antes de tocar la BD
-EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+app.register_blueprint(movie_bp, url_prefix="/movies")
 
 
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "server": "python"})
-
-
 
 
 if __name__ == "__main__":

@@ -1,15 +1,15 @@
 version: "3.8"
 services:
-  mysql-local:
-    image: mysql:8.0
-    container_name: cloudcinema-mysql-local
+  postgres-local:
+    image: postgres:16
+    container_name: cloudcinema-postgres-local
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: cloudcinema
-      MYSQL_USER: cloudcinema_user
-      MYSQL_PASSWORD: cloudcinema_pass
+      POSTGRES_DB: cloudcinema
+      POSTGRES_USER: cloudcinema_user
+      POSTGRES_PASSWORD: cloudcinema_pass
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - ./src/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ${PWD}/../database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ${PWD}/../database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql

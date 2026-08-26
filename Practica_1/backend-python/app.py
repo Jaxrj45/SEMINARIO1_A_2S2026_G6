@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 from src.routes.auth import auth_bp
 from src.routes.movies import movie_bp
+from src.routes.playlist import playlist_bp
 
 load_dotenv()
 
@@ -21,7 +22,8 @@ PORT = int(os.environ.get("PORT", 5000))
 
 # Registro del blueprint de autenticación
 app.register_blueprint(auth_bp, url_prefix="/auth")
-app.register_blueprint(movie_bp, url_prefix="/movies")
+app.register_blueprint(movie_bp)
+app.register_blueprint(playlist_bp)
 
 
 @app.route("/health")

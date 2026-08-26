@@ -121,3 +121,20 @@ def login():
     finally:
         cursor.close()
         conn.close()
+
+
+@auth_bp.route("/obtenerUsuarios", methods=["GET"])
+def obtener_usuarios():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            "SELECT id_usuario, nombre_completo, correo, foto_perfil FROM usuario"
+        )
+        usuarios = cursor.fetchall()
+        return jsonify(usuarios), 200
+
+    finally:
+        cursor.close()
+        conn.close()

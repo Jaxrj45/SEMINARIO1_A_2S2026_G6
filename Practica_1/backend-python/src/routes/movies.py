@@ -5,8 +5,8 @@ movie_bp = Blueprint("movies", __name__)
 
 
 # Endpoint para obtener la lista de películas
-# localhost:5000/movies/get_movies
-@movie_bp.route("/get_movies", methods=["GET"])
+# localhost:5000/movies
+@movie_bp.route("/movies", methods=["GET"])
 def get_movies():
     conn = get_db_connection()
     cursor = conn.cursor()

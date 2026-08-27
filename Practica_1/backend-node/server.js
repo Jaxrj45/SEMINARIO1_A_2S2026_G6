@@ -11,16 +11,14 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// TODO (Integrante B): mover cada bloque a src/routes/*.js conforme se implemente
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', server: 'node' });
 });
 
-// app.use('/register', require('./src/routes/auth'));
-// app.use('/login', require('./src/routes/auth'));
-// app.use('/movies', require('./src/routes/movies'));
-// app.use('/playlist', require('./src/routes/playlist'));
-// app.use('/profile', require('./src/routes/profile'));
+app.use(require('./src/routes/auth'));
+app.use(require('./src/routes/movies'));
+app.use(require('./src/routes/playlist'));
+app.use(require('./src/routes/profile'));
 
 app.listen(PORT, () => {
   console.log(`Servidor Node.js escuchando en puerto ${PORT}`);

@@ -1,0 +1,16 @@
+# CloudCinema - Backend Node.js
+# Se despliega en su propia instancia EC2, escuchando en el puerto 3000.
+#
+#   docker compose up -d --build
+#   curl http://localhost:3000/health
+
+services:
+  backend-nodejs:
+    build: .
+    container_name: cloudcinema-nodejs
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      SERVER_NAME: node
+    restart: unless-stopped

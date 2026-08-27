@@ -64,9 +64,6 @@ CREATE TABLE "usuario" (
   "foto_perfil" VARCHAR(255),
   "creado_en" TIMESTAMPTZ NOT NULL DEFAULT (NOW()),
   "actualizado_en" TIMESTAMPTZ NOT NULL DEFAULT (NOW()),
-  CONSTRAINT "ck_usuario_nombre"
-  CONSTRAINT "ck_usuario_correo"
-  CONSTRAINT "ck_usuario_password"
   PRIMARY KEY ("id_usuario")
 );
 
@@ -79,10 +76,6 @@ CREATE TABLE "pelicula" (
   "poster" VARCHAR(255) NOT NULL,
   "estado" estado_pelicula NOT NULL DEFAULT 'DISPONIBLE',
   "creado_en" TIMESTAMPTZ NOT NULL DEFAULT (NOW()),
-  CONSTRAINT "ck_pelicula_titulo" CHECK (LENGTH(TRIM(titulo)) > 0),
-  CONSTRAINT "ck_pelicula_director" CHECK (LENGTH(TRIM(director)) > 0),
-  CONSTRAINT "ck_pelicula_anio"
-  CONSTRAINT "ck_pelicula_url"
   PRIMARY KEY ("id_pelicula")
 );
 

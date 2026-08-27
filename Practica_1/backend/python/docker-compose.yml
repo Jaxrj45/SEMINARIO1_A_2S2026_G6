@@ -1,0 +1,16 @@
+# CloudCinema - Backend Python
+# Se despliega en su propia instancia EC2, escuchando en el puerto 3000.
+#
+#   docker compose up -d --build
+#   curl http://localhost:3000/health
+
+services:
+  backend-python:
+    build: .
+    container_name: cloudcinema-python
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      SERVER_NAME: python
+    restart: unless-stopped

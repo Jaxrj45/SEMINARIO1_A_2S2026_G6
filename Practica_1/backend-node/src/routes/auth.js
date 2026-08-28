@@ -1,68 +1,46 @@
 const express = require('express');
-const path = require('path');
-const crypto = require('crypto');
 const pool = require('../config/db');
-const upload = require('../middleware/upload');
-const { uploadToS3 } = require('../config/s3');
-const { md5 } = require('../utils/crypto');
 const { isValidEmail } = require('../utils/validate');
 const { serializeUser } = require('../utils/serialize');
 
 const router = express.Router();
 
-// POST /register
-// multipart/form-data: correo, nombre, password, password_confirm, foto (opcional)
-router.post('/register', upload.single('foto'), async (req, res) => {
-  const { correo, nombre, password, password_confirm } = req.body;
+// POST /auth/register
+// JSON: { correo, nombre_completo, password, password_confirm, foto_perfil? }
+// foto_perfil es la key relativa en S3 (ej. "Fotos_Perfil/x.jpg"), no un archivo.
+router.post('/auth/register', async (req, res) => {
+  const { correo, nombre_completo, password, password_confirm, foto_perfil } = req.body;
 
-  if (!correo || !nombre || !password || !password_confirm) {
-    return res
-      .status(400)
-      .json({ error: 'correo, nombre, password y password_confirm son obligatorios' });
+  if (!correo || !nombre_completo || !password || !password_confirm) {
+    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
   if (!isValidEmail(correo)) {
     return res.status(400).json({ error: 'Formato de correo invalido' });
   }
   if (password !== password_confirm) {
-    return res.status(400).json({ error: 'password y password_confirm no coinciden' });
+    return res.status(400).json({ error: 'Las contrasenas no coinciden' });
   }
 
   try {
-    const existing = await pool.query(
-      'SELECT id_usuario FROM cloudcinema.usuario WHERE LOWER(correo) = LOWER($1)',
-      [correo]
-    );
-    if (existing.rowCount > 0) {
-      return res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
-    }
-
-    let fotoKey = null;
-    if (req.file) {
-      const ext = path.extname(req.file.originalname) || '.jpg';
-      fotoKey = `Fotos_Perfil/${crypto.randomUUID()}${ext}`;
-      await uploadToS3(req.file.buffer, fotoKey, req.file.mimetype);
-    }
-
-    const result = await pool.query(
-      `INSERT INTO cloudcinema.usuario (nombre_completo, correo, password_md5, foto_perfil)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id_usuario, nombre_completo, correo, foto_perfil`,
-      [nombre, correo, md5(password), fotoKey]
-    );
-
-    return res.status(201).json({ user: serializeUser(result.rows[0]) });
+    const result = await pool.query('SELECT * FROM sp_registrar_usuario($1, $2, $3, $4)', [
+      nombre_completo,
+      correo,
+      password,
+      foto_perfil || null,
+    ]);
+    return res.status(201).json(serializeUser(result.rows[0]));
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
+      return res.status(409).json({ error: 'El correo ya esta registrado' });
     }
-    console.error('Error en /register:', err);
+    console.error('Error en /auth/register:', err);
     return res.status(500).json({ error: 'Error interno al registrar el usuario' });
   }
 });
 
-// POST /login
+// POST /auth/login
 // JSON: { correo, password }
-router.post('/login', async (req, res) => {
+router.post('/auth/login', async (req, res) => {
   const { correo, password } = req.body;
 
   if (!correo || !password) {
@@ -73,21 +51,28 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      `SELECT id_usuario, nombre_completo, correo, foto_perfil, password_md5
-       FROM cloudcinema.usuario WHERE LOWER(correo) = LOWER($1)`,
-      [correo]
-    );
-
+    const result = await pool.query('SELECT * FROM sp_login($1, $2)', [correo, password]);
     const row = result.rows[0];
-    if (!row || row.password_md5 !== md5(password)) {
+    if (!row) {
       return res.status(401).json({ error: 'Correo o contrasena incorrectos' });
     }
-
-    return res.status(200).json({ user: serializeUser(row) });
+    return res.status(200).json(serializeUser(row));
   } catch (err) {
-    console.error('Error en /login:', err);
+    console.error('Error en /auth/login:', err);
     return res.status(500).json({ error: 'Error interno al iniciar sesion' });
+  }
+});
+
+// GET /auth/obtenerUsuarios
+router.get('/auth/obtenerUsuarios', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id_usuario, nombre_completo, correo, foto_perfil FROM usuario'
+    );
+    return res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error en /auth/obtenerUsuarios:', err);
+    return res.status(500).json({ error: 'Error interno al obtener los usuarios' });
   }
 });
 

@@ -1,52 +1,40 @@
 const express = require('express');
-const path = require('path');
-const crypto = require('crypto');
 const pool = require('../config/db');
-const upload = require('../middleware/upload');
-const { uploadToS3 } = require('../config/s3');
-const { md5 } = require('../utils/crypto');
 const { serializeUser } = require('../utils/serialize');
 
 const router = express.Router();
 
 // PUT /profile
-// multipart/form-data: id_usuario, password_actual (obligatorios),
-// nombre_completo (opcional), foto (opcional)
-router.put('/profile', upload.single('foto'), async (req, res) => {
-  const { id_usuario, password_actual, nombre_completo } = req.body;
+// JSON: id_usuario, password (obligatorios), nombre_completo y/o foto_perfil (opcionales)
+// foto_perfil es la key relativa en S3 (ej. "Fotos_Perfil/x.jpg"), no un archivo.
+router.put('/profile', async (req, res) => {
+  const { id_usuario, password, nombre_completo, foto_perfil } = req.body;
 
-  if (!id_usuario || !password_actual) {
-    return res.status(400).json({ error: 'id_usuario y password_actual son obligatorios' });
+  if (!id_usuario || !password) {
+    return res.status(400).json({ error: 'id_usuario y password son obligatorios' });
+  }
+  if (!nombre_completo && !foto_perfil) {
+    return res
+      .status(400)
+      .json({ error: 'Debes enviar al menos nombre_completo o foto_perfil' });
   }
 
   try {
-    const current = await pool.query(
-      'SELECT id_usuario, password_md5 FROM cloudcinema.usuario WHERE id_usuario = $1',
-      [id_usuario]
-    );
-    const row = current.rows[0];
-    if (!row || row.password_md5 !== md5(password_actual)) {
+    const result = await pool.query('SELECT * FROM sp_actualizar_perfil($1, $2, $3, $4)', [
+      id_usuario,
+      nombre_completo || null,
+      foto_perfil || null,
+      password,
+    ]);
+    return res.status(200).json(serializeUser(result.rows[0]));
+  } catch (err) {
+    // sp_actualizar_perfil usa ERRCODE no_data_found (P0002) e invalid_password (28P01)
+    if (err.code === 'P0002') {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    if (err.code === '28P01') {
       return res.status(401).json({ error: 'Contrasena actual incorrecta' });
     }
-
-    let fotoKey = null;
-    if (req.file) {
-      const ext = path.extname(req.file.originalname) || '.jpg';
-      fotoKey = `Fotos_Perfil/${crypto.randomUUID()}${ext}`;
-      await uploadToS3(req.file.buffer, fotoKey, req.file.mimetype);
-    }
-
-    const result = await pool.query(
-      `UPDATE cloudcinema.usuario
-       SET nombre_completo = COALESCE($1, nombre_completo),
-           foto_perfil = COALESCE($2, foto_perfil)
-       WHERE id_usuario = $3
-       RETURNING id_usuario, nombre_completo, correo, foto_perfil`,
-      [nombre_completo || null, fotoKey, id_usuario]
-    );
-
-    return res.status(200).json({ user: serializeUser(result.rows[0]) });
-  } catch (err) {
     console.error('Error en /profile:', err);
     return res.status(500).json({ error: 'Error interno al actualizar el perfil' });
   }

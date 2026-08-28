@@ -13,30 +13,30 @@ router.post('/playlist', async (req, res) => {
   }
 
   try {
-    const insert = await pool.query(
-      `INSERT INTO cloudcinema.lista_reproduccion (id_usuario, id_pelicula)
-       VALUES ($1, $2)
-       RETURNING id_lista`,
-      [id_usuario, id_pelicula]
-    );
-
-    const item = await pool.query('SELECT * FROM cloudcinema.v_mi_lista WHERE id_lista = $1', [
-      insert.rows[0].id_lista,
+    const result = await pool.query('SELECT * FROM sp_agregar_a_lista($1, $2)', [
+      id_usuario,
+      id_pelicula,
     ]);
+    const row = result.rows[0];
 
-    return res.status(201).json({ item: serializePlaylistItem(item.rows[0]) });
+    if (row.ya_estaba) {
+      return res.status(409).json({ error: 'Esta pelicula ya esta en tu lista' });
+    }
+
+    return res.status(201).json({
+      id_lista: row.id_lista,
+      id_usuario: Number(id_usuario),
+      id_pelicula: row.id_pelicula,
+      agregada_en: row.agregada_en,
+      mensaje: 'Pelicula anadida a tu lista de reproduccion',
+    });
   } catch (err) {
-    if (err.code === '23505') {
-      return res.status(409).json({ error: 'La pelicula ya esta en tu lista' });
+    // sp_agregar_a_lista usa ERRCODE no_data_found (P0002) y check_violation (23514)
+    if (err.code === 'P0002') {
+      return res.status(404).json({ error: 'El usuario o la pelicula no existen' });
     }
-    if (err.code === '23503') {
-      return res.status(404).json({ error: 'Usuario o pelicula no existe' });
-    }
-    // trigger tg_lista_solo_disponibles (fn_lista_solo_disponibles) usa ERRCODE check_violation (23514)
     if (err.code === '23514') {
-      return res
-        .status(400)
-        .json({ error: 'Esa pelicula es un proximo estreno y no se puede agregar a la lista' });
+      return res.status(400).json({ error: err.message });
     }
     console.error('Error en POST /playlist:', err);
     return res.status(500).json({ error: 'Error interno al agregar a la lista' });
@@ -52,11 +52,8 @@ router.get('/playlist', async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      'SELECT * FROM cloudcinema.v_mi_lista WHERE id_usuario = $1 ORDER BY agregada_en DESC',
-      [id_usuario]
-    );
-    return res.status(200).json({ playlist: result.rows.map(serializePlaylistItem) });
+    const result = await pool.query('SELECT * FROM sp_listar_mi_lista($1)', [id_usuario]);
+    return res.status(200).json(result.rows.map(serializePlaylistItem));
   } catch (err) {
     console.error('Error en GET /playlist:', err);
     return res.status(500).json({ error: 'Error interno al obtener la lista' });
@@ -74,13 +71,13 @@ router.delete('/playlist/:id', async (req, res) => {
 
   try {
     const result = await pool.query(
-      'DELETE FROM cloudcinema.lista_reproduccion WHERE id_lista = $1 AND id_usuario = $2 RETURNING id_lista',
+      'DELETE FROM lista_reproduccion WHERE id_lista = $1 AND id_usuario = $2 RETURNING id_lista',
       [id, id_usuario]
     );
     if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Elemento no encontrado en tu lista' });
+      return res.status(404).json({ error: 'No se encontro esa entrada en tu lista' });
     }
-    return res.status(200).json({ deleted: true });
+    return res.status(200).json({ mensaje: 'Pelicula eliminada de tu lista' });
   } catch (err) {
     console.error('Error en DELETE /playlist/:id:', err);
     return res.status(500).json({ error: 'Error interno al eliminar de la lista' });

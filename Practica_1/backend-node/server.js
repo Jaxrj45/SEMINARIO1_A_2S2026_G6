@@ -6,7 +6,7 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-app.use(cors());
+app.use(cors(process.env.CORS_ORIGIN ? { origin: process.env.CORS_ORIGIN } : {}));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;

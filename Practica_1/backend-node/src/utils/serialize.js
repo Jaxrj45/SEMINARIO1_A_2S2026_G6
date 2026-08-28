@@ -27,7 +27,6 @@ function serializeMovie(row) {
 function serializePlaylistItem(row) {
   return {
     id_lista: row.id_lista,
-    id_usuario: row.id_usuario,
     id_pelicula: row.id_pelicula,
     titulo: row.titulo,
     director: row.director,

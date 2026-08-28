@@ -1,5 +1,5 @@
-import hashlib
 import psycopg2
+import psycopg2.errors
 from flask import Blueprint, request, jsonify
 
 from src.db import get_db_connection
@@ -7,8 +7,26 @@ from src.s3_utils import build_image_url
 
 profile_bp = Blueprint("profile", __name__, url_prefix="/profile")
 
-# Endpoint para actualizar el perfil de un usuario
-# localhost:5000/profile
+
+@profile_bp.route("/<int:id_usuario>", methods=["GET"])
+def get_profile(id_usuario):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT * FROM sp_obtener_perfil(%s)", (id_usuario,))
+        perfil = cursor.fetchone()
+
+        if not perfil:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+        perfil["foto_perfil"] = build_image_url(perfil["foto_perfil"])
+        return jsonify(perfil), 200
+
+    finally:
+        cursor.close()
+        conn.close()
+
 @profile_bp.route("", methods=["PUT"])
 def update_profile():
     data = request.get_json(silent=True)
@@ -26,41 +44,13 @@ def update_profile():
     if not nuevo_nombre and not nueva_foto:
         return jsonify({"error": "Debes enviar al menos nombre_completo o foto_perfil"}), 400
 
-    password_md5 = hashlib.md5(password_actual.encode("utf-8")).hexdigest()
-
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
         cursor.execute(
-            "SELECT password_md5 FROM usuario WHERE id_usuario = %s",
-            (id_usuario,),
-        )
-        usuario = cursor.fetchone()
-
-        if not usuario:
-            return jsonify({"error": "Usuario no encontrado"}), 404
-
-        if usuario["password_md5"] != password_md5:
-            return jsonify({"error": "Contraseña actual incorrecta"}), 401
-
-        campos = []
-        valores = []
-
-        if nuevo_nombre:
-            campos.append("nombre_completo = %s")
-            valores.append(nuevo_nombre.strip())
-
-        if nueva_foto:
-            campos.append("foto_perfil = %s")
-            valores.append(nueva_foto)
-
-        valores.append(id_usuario)
-
-        cursor.execute(
-            f"UPDATE usuario SET {', '.join(campos)} WHERE id_usuario = %s "
-            f"RETURNING id_usuario, correo, nombre_completo, foto_perfil",
-            tuple(valores),
+            "SELECT * FROM sp_actualizar_perfil(%s, %s, %s, %s)",
+            (id_usuario, nuevo_nombre, nueva_foto, password_actual),
         )
         actualizado = cursor.fetchone()
         conn.commit()
@@ -68,14 +58,13 @@ def update_profile():
         actualizado["foto_perfil"] = build_image_url(actualizado["foto_perfil"])
         return jsonify(actualizado), 200
 
-    except psycopg2.errors.CheckViolation:
-        # Salta si foto_perfil no cumple el CHECK (debe empezar con "Fotos_Perfil/")
+    except psycopg2.errors.InvalidPassword:
         conn.rollback()
-        return jsonify({"error": "La foto de perfil debe tener el formato 'Fotos_Perfil/archivo.jpg'"}), 400
+        return jsonify({"error": "Contraseña actual incorrecta"}), 401
 
-    except psycopg2.Error as e:
+    except psycopg2.errors.NoDataFound:
         conn.rollback()
-        return jsonify({"error": f"Error de base de datos: {e.pgerror}"}), 400
+        return jsonify({"error": "Usuario no encontrado"}), 404
 
     finally:
         cursor.close()

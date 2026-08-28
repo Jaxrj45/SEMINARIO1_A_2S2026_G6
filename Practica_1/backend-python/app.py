@@ -12,6 +12,7 @@ from src.routes.auth import auth_bp
 from src.routes.movies import movies_bp
 from src.routes.playlist import playlist_bp
 from src.routes.profile import profile_bp
+from src.routes.uploads import uploads_bp
 
 load_dotenv()
 
@@ -26,6 +27,7 @@ app.register_blueprint(auth_bp, url_prefix="/auth")
 app.register_blueprint(movies_bp)
 app.register_blueprint(playlist_bp)
 app.register_blueprint(profile_bp)
+app.register_blueprint(uploads_bp)
 
 
 @app.route("/health")

@@ -1,15 +1,19 @@
 const express = require('express');
+const crypto = require('crypto');
+const path = require('path');
 const pool = require('../config/db');
+const upload = require('../middleware/upload');
+const { uploadToS3 } = require('../config/s3');
 const { isValidEmail } = require('../utils/validate');
 const { serializeUser } = require('../utils/serialize');
 
 const router = express.Router();
 
 // POST /auth/register
-// JSON: { correo, nombre_completo, password, password_confirm, foto_perfil? }
-// foto_perfil es la key relativa en S3 (ej. "Fotos_Perfil/x.jpg"), no un archivo.
-router.post('/auth/register', async (req, res) => {
-  const { correo, nombre_completo, password, password_confirm, foto_perfil } = req.body;
+// multipart/form-data: correo, nombre_completo, password, password_confirm, foto_perfil? (archivo)
+// tambien acepta JSON con foto_perfil como key ya subida (ej. "Fotos_Perfil/x.jpg").
+router.post('/auth/register', upload.single('foto_perfil'), async (req, res) => {
+  const { correo, nombre_completo, password, password_confirm } = req.body;
 
   if (!correo || !nombre_completo || !password || !password_confirm) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
@@ -22,11 +26,18 @@ router.post('/auth/register', async (req, res) => {
   }
 
   try {
+    let fotoPerfilKey = req.body.foto_perfil || null;
+    if (req.file) {
+      const ext = path.extname(req.file.originalname) || '.jpg';
+      const key = `${process.env.S3_FOLDER_PROFILE}/${crypto.randomUUID()}${ext}`;
+      fotoPerfilKey = await uploadToS3(req.file.buffer, key, req.file.mimetype);
+    }
+
     const result = await pool.query('SELECT * FROM sp_registrar_usuario($1, $2, $3, $4)', [
       nombre_completo,
       correo,
       password,
-      foto_perfil || null,
+      fotoPerfilKey,
     ]);
     return res.status(201).json(serializeUser(result.rows[0]));
   } catch (err) {

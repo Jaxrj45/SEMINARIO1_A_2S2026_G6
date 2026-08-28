@@ -1,14 +1,13 @@
 import psycopg2
 import psycopg2.errors
 from flask import Blueprint, request, jsonify
-from src.s3_utils import build_image_url
+
 from src.db import get_db_connection
+from src.s3_utils import build_image_url
 
 playlist_bp = Blueprint("playlist", __name__, url_prefix="/playlist")
 
 
-# Endpoint para añadir una película a la lista de reproducción de un usuario
-# localhost:5000/playlist
 @playlist_bp.route("", methods=["POST"])
 def add_to_playlist():
     data = request.get_json(silent=True)
@@ -26,53 +25,37 @@ def add_to_playlist():
 
     try:
         cursor.execute(
-            """
-            INSERT INTO lista_reproduccion (id_usuario, id_pelicula)
-            VALUES (%s, %s)
-            RETURNING id_lista, agregada_en
-            """,
+            "SELECT * FROM sp_agregar_a_lista(%s, %s)",
             (id_usuario, id_pelicula),
         )
-        nueva = cursor.fetchone()
+        resultado = cursor.fetchone()
         conn.commit()
 
-        return (
-            jsonify(
-                {
-                    "id_lista": nueva["id_lista"],
-                    "id_usuario": id_usuario,
-                    "id_pelicula": id_pelicula,
-                    "agregada_en": nueva["agregada_en"].isoformat(),
-                    "mensaje": "Película añadida a tu lista de reproducción",
-                }
-            ),
-            201,
-        )
+      
+        resultado["agregada_en"] = resultado["agregada_en"].isoformat()
 
-    except psycopg2.errors.UniqueViolation:
+        if resultado["ya_estaba"]:
+            resultado["mensaje"] = "Esta película ya estaba en tu lista"
+            return jsonify(resultado), 200
+
+        resultado["mensaje"] = "Película añadida a tu lista de reproducción"
+        return jsonify(resultado), 201
+
+    except psycopg2.errors.CheckViolation:
+        # sp_agregar_a_lista lanza esto (ERRCODE check_violation) cuando
+        # la película es PROXIMO_ESTRENO.
         conn.rollback()
-        return jsonify({"error": "Esta película ya está en tu lista"}), 409
+        return jsonify({"error": "La película es un próximo estreno y no puede agregarse a la lista"}), 400
 
-    except (psycopg2.errors.RaiseException, psycopg2.errors.CheckViolation) as e:
-        conn.rollback()
-        mensaje_limpio = str(e).split("CONTEXT:")[0].strip()
-        return jsonify({"error": mensaje_limpio}), 400
-
-    except psycopg2.errors.ForeignKeyViolation:
+    except psycopg2.errors.NoDataFound:
         conn.rollback()
         return jsonify({"error": "El usuario o la película no existen"}), 404
-
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"error": "Error interno del servidor", "detalle": str(e)}), 500
 
     finally:
         cursor.close()
         conn.close()
 
 
-# Endpoint para obtener la lista de reproducción de un usuario
-# localhost:5000/playlist?id_usuario=1
 @playlist_bp.route("", methods=["GET"])
 def get_playlist():
     id_usuario = request.args.get("id_usuario")
@@ -84,16 +67,7 @@ def get_playlist():
     cursor = conn.cursor()
 
     try:
-        cursor.execute(
-            """
-            SELECT id_lista, id_pelicula, titulo, director,
-                   anio_estreno, url_contenido, poster, agregada_en
-            FROM v_mi_lista
-            WHERE id_usuario = %s
-            ORDER BY agregada_en DESC
-            """,
-            (id_usuario,),
-        )
+        cursor.execute("SELECT * FROM sp_listar_mi_lista(%s)", (id_usuario,))
         peliculas = cursor.fetchall()
 
         for p in peliculas:
@@ -109,6 +83,7 @@ def get_playlist():
 
 @playlist_bp.route("/<int:id_lista>", methods=["DELETE"])
 def remove_from_playlist(id_lista):
+ 
     id_usuario = request.args.get("id_usuario")
 
     if not id_usuario:
@@ -119,14 +94,20 @@ def remove_from_playlist(id_lista):
 
     try:
         cursor.execute(
-            "DELETE FROM lista_reproduccion WHERE id_lista = %s AND id_usuario = %s",
+            "SELECT id_pelicula FROM lista_reproduccion "
+            "WHERE id_lista = %s AND id_usuario = %s",
             (id_lista, id_usuario),
         )
-        filas_borradas = cursor.rowcount
-        conn.commit()
+        entrada = cursor.fetchone()
 
-        if filas_borradas == 0:
+        if not entrada:
             return jsonify({"error": "No se encontró esa entrada en tu lista"}), 404
+
+        cursor.execute(
+            "SELECT sp_quitar_de_lista(%s, %s)",
+            (id_usuario, entrada["id_pelicula"]),
+        )
+        conn.commit()
 
         return jsonify({"mensaje": "Película eliminada de tu lista"}), 200
 

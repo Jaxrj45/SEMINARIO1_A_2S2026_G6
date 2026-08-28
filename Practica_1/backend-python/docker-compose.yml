@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   postgres-local:
     image: postgres:16
@@ -11,5 +10,15 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ${PWD}/../database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      - ${PWD}/../database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ../database/sps:/docker-entrypoint-initdb.d
+      - ../database/seed.sql:/docker-entrypoint-initdb.d/z_seed.sql
+
+  localstack:
+    image: localstack/localstack:3
+    container_name: cloudcinema-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=us-east-1

@@ -6,18 +6,7 @@ ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
 
 
 def _get_s3_client():
-    """
-    No pasamos aws_access_key_id/secret explícitos aquí a propósito.
-    boto3 los busca automáticamente en este orden:
-      1. Variables de entorno (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)
-         -> esto es lo que usamos ahora, en local, vía tu .env
-      2. Archivo ~/.aws/credentials
-      3. Rol IAM de la instancia EC2 (si corre en AWS)
-    Gracias a esto, cuando despleguemos en EC2 con un rol IAM asignado
-    (Fase 10), este código NO cambia: boto3 detecta automáticamente
-    que ya no hay variables de entorno con keys y usa el rol de la
-    instancia en su lugar.
-    """
+  
     return boto3.client("s3", region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
 
@@ -44,10 +33,7 @@ def upload_profile_photo(file_storage):
 
 
 def build_image_url(key):
-    """
-    Convierte una key relativa (ej. "Fotos_Perfil/abc123.jpg") en la
-    URL pública completa
-    """
+
     if not key:
         return None
 

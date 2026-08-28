@@ -1,0 +1,15 @@
+version: "3.8"
+services:
+  postgres-local:
+    image: postgres:16
+    container_name: cloudcinema-postgres-local
+    restart: always
+    environment:
+      POSTGRES_DB: cloudcinema
+      POSTGRES_USER: cloudcinema_user
+      POSTGRES_PASSWORD: cloudcinema_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${PWD}/../database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ${PWD}/../database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql

@@ -23,3 +23,6 @@ frontend/.env
 *.pem
 *.key
 credentials*.json
+# Python cache universal
+**/__pycache__/
+*.pyc

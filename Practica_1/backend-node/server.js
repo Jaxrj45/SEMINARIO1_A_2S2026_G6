@@ -10,15 +10,21 @@ app.use(cors(process.env.CORS_ORIGIN ? { origin: process.env.CORS_ORIGIN } : {})
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
+const SERVER_NAME = process.env.SERVER_NAME || 'node';
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', server: 'node' });
+  res.status(200).json({ status: 'ok', server: SERVER_NAME });
 });
 
 app.use(require('./src/routes/auth'));
 app.use(require('./src/routes/movies'));
 app.use(require('./src/routes/playlist'));
 app.use(require('./src/routes/profile'));
+app.use(require('./src/routes/uploads'));
+
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint no encontrado' });
+});
 
 app.use((err, req, res, next) => {
   if (err && err.name === 'MulterError') {
@@ -28,6 +34,6 @@ app.use((err, req, res, next) => {
   return res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor Node.js escuchando en puerto ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[${SERVER_NAME}] escuchando en el puerto ${PORT}`);
 });

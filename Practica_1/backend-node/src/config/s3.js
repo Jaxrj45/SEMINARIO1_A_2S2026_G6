@@ -1,13 +1,19 @@
-// Subida de imagenes a S3 (bucket Practica1-Images-G#) via SDK oficial de AWS
+const crypto = require('crypto');
 const AWS = require('aws-sdk');
 
-const s3 = new AWS.S3({ region: process.env.AWS_REGION });
-const BUCKET = process.env.S3_BUCKET_IMAGES;
+const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
+
+const s3 = new AWS.S3({ region: process.env.AWS_REGION || 'us-east-1' });
+
+function allowedFile(filename) {
+  if (!filename || !filename.includes('.')) return false;
+  return ALLOWED_EXTENSIONS.has(filename.split('.').pop().toLowerCase());
+}
 
 async function uploadToS3(buffer, key, contentType) {
   await s3
     .upload({
-      Bucket: BUCKET,
+      Bucket: process.env.S3_BUCKET_IMAGES,
       Key: key,
       Body: buffer,
       ContentType: contentType,
@@ -16,9 +22,18 @@ async function uploadToS3(buffer, key, contentType) {
   return key;
 }
 
-function publicUrl(key) {
-  if (!key) return null;
-  return `https://${BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+async function uploadProfilePhoto(file) {
+  const ext = file.originalname.split('.').pop().toLowerCase();
+  const folder = process.env.S3_FOLDER_PROFILE || 'Fotos_Perfil';
+  const key = `${folder}/${crypto.randomUUID().replace(/-/g, '')}.${ext}`;
+  return uploadToS3(file.buffer, key, file.mimetype);
 }
 
-module.exports = { uploadToS3, publicUrl };
+function publicUrl(key) {
+  if (!key) return null;
+  const bucket = process.env.S3_BUCKET_IMAGES;
+  const region = process.env.AWS_REGION || 'us-east-1';
+  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+}
+
+module.exports = { s3, allowedFile, uploadToS3, uploadProfilePhoto, publicUrl };

@@ -1,54 +1,67 @@
 const express = require('express');
-const crypto = require('crypto');
-const path = require('path');
 const pool = require('../config/db');
 const upload = require('../middleware/upload');
-const { uploadToS3 } = require('../config/s3');
+const { uploadProfilePhoto, allowedFile } = require('../config/s3');
 const { serializeUser } = require('../utils/serialize');
+const { handleDbError } = require('../utils/dbErrors');
+const { getPayload, trimOrNull } = require('../utils/body');
 
 const router = express.Router();
 
-// PUT /profile
-// multipart/form-data: id_usuario, password (obligatorios), nombre_completo y/o foto_perfil (opcionales)
-// foto_perfil puede ser un archivo (se sube a S3) o, en JSON, la key ya subida (ej. "Fotos_Perfil/x.jpg").
-router.put('/profile', upload.single('foto_perfil'), async (req, res) => {
-  const { id_usuario, password, nombre_completo } = req.body;
-  const foto_perfil = req.body.foto_perfil;
+router.get('/profile/:id_usuario', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM sp_obtener_perfil($1::bigint)', [
+      req.params.id_usuario,
+    ]);
+    const perfil = result.rows[0];
 
-  if (!id_usuario || !password) {
+    if (!perfil) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    return res.status(200).json(serializeUser(perfil));
+  } catch (err) {
+    return handleDbError(err, res, {}, 'GET /profile/:id_usuario');
+  }
+});
+
+router.put('/profile', upload.single('foto_perfil'), async (req, res) => {
+  const data = getPayload(req);
+  if (!data) {
+    return res.status(400).json({ error: 'Cuerpo JSON requerido' });
+  }
+
+  const id_usuario = data.id_usuario;
+  const password_actual = data.password || '';
+  const nuevo_nombre = trimOrNull(data.nombre_completo);
+  const nueva_foto = trimOrNull(data.foto_perfil);
+
+  if (!id_usuario || !password_actual) {
     return res.status(400).json({ error: 'id_usuario y password son obligatorios' });
   }
-  if (!nombre_completo && !foto_perfil && !req.file) {
+  if (!nuevo_nombre && !nueva_foto && !req.file) {
     return res
       .status(400)
       .json({ error: 'Debes enviar al menos nombre_completo o foto_perfil' });
   }
+  if (req.file && !allowedFile(req.file.originalname)) {
+    return res.status(400).json({ error: 'Formato no permitido. Usa jpg, jpeg, png o webp' });
+  }
 
   try {
-    let fotoPerfilKey = foto_perfil || null;
-    if (req.file) {
-      const ext = path.extname(req.file.originalname) || '.jpg';
-      const key = `${process.env.S3_FOLDER_PROFILE}/${crypto.randomUUID()}${ext}`;
-      fotoPerfilKey = await uploadToS3(req.file.buffer, key, req.file.mimetype);
-    }
+    const fotoPerfilKey = req.file ? await uploadProfilePhoto(req.file) : nueva_foto;
 
-    const result = await pool.query('SELECT * FROM sp_actualizar_perfil($1, $2, $3, $4)', [
-      id_usuario,
-      nombre_completo || null,
-      fotoPerfilKey,
-      password,
-    ]);
+    const result = await pool.query(
+      'SELECT * FROM sp_actualizar_perfil($1::bigint, $2, $3, $4)',
+      [id_usuario, nuevo_nombre, fotoPerfilKey, password_actual]
+    );
     return res.status(200).json(serializeUser(result.rows[0]));
   } catch (err) {
-    // sp_actualizar_perfil usa ERRCODE no_data_found (P0002) e invalid_password (28P01)
-    if (err.code === 'P0002') {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-    if (err.code === '28P01') {
-      return res.status(401).json({ error: 'Contrasena actual incorrecta' });
-    }
-    console.error('Error en /profile:', err);
-    return res.status(500).json({ error: 'Error interno al actualizar el perfil' });
+    return handleDbError(
+      err,
+      res,
+      { P0002: 'Usuario no encontrado', '28P01': 'Contrasena actual incorrecta' },
+      'PUT /profile'
+    );
   }
 });
 

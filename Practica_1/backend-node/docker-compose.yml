@@ -28,6 +28,7 @@ services:
       - ../database/sps/sp_agregar_a_lista.sql:/docker-entrypoint-initdb.d/12_sp_agregar_a_lista.sql:ro
       - ../database/sps/sp_quitar_de_lista.sql:/docker-entrypoint-initdb.d/13_sp_quitar_de_lista.sql:ro
       - ../database/sps/sp_listar_mi_lista.sql:/docker-entrypoint-initdb.d/14_sp_listar_mi_lista.sql:ro
+      - ../database/sps/sp_listar_usuarios.sql:/docker-entrypoint-initdb.d/15_sp_listar_usuarios.sql:ro
       - cloudcinema_db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d cloudcinema"]

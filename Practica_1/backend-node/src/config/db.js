@@ -1,5 +1,6 @@
-// Conexion a RDS (PostgreSQL) - esquema definido en database/schema.sql
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+types.setTypeParser(20, (value) => (value === null ? null : Number(value)));
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -7,6 +8,7 @@ const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  options: '-c search_path=cloudcinema,public',
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 

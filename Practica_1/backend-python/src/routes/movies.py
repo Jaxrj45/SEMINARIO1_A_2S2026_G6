@@ -1,25 +1,24 @@
-import psycopg2
 import psycopg2.errors
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 
 from src.db import get_db_connection
+from src.payload import get_payload, trim_or_none
 from src.s3_utils import build_image_url
 
 movies_bp = Blueprint("movies", __name__, url_prefix="/movies")
 
-ESTADOS_VALIDOS = {"DISPONIBLE", "PROXIMO_ESTRENO"}
+ESTADOS_VALIDOS = ["DISPONIBLE", "PROXIMO_ESTRENO"]
 
 
 @movies_bp.route("", methods=["GET"])
 def get_movies():
-
-    id_usuario = request.args.get("id_usuario")
+    id_usuario = trim_or_none(request.args.get("id_usuario"))
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        cursor.execute("SELECT * FROM sp_listar_peliculas(%s)", (id_usuario,))
+        cursor.execute("SELECT * FROM sp_listar_peliculas(%s::bigint)", (id_usuario,))
         peliculas = cursor.fetchall()
 
         for p in peliculas:
@@ -38,11 +37,11 @@ def get_movie(id_pelicula):
     cursor = conn.cursor()
 
     try:
-        cursor.execute("SELECT * FROM sp_obtener_pelicula(%s)", (id_pelicula,))
+        cursor.execute("SELECT * FROM sp_obtener_pelicula(%s::bigint)", (id_pelicula,))
         pelicula = cursor.fetchone()
 
         if not pelicula:
-            return jsonify({"error": "Película no encontrada"}), 404
+            return jsonify({"error": "Pelicula no encontrada"}), 404
 
         pelicula["poster"] = build_image_url(pelicula["poster"])
         return jsonify(pelicula), 200
@@ -54,22 +53,26 @@ def get_movie(id_pelicula):
 
 @movies_bp.route("", methods=["POST"])
 def create_movie():
-
-    data = request.get_json(silent=True)
-    if not data:
+    data = get_payload()
+    if data is None:
         return jsonify({"error": "Cuerpo JSON requerido"}), 400
 
-    titulo = data.get("titulo", "").strip()
-    director = data.get("director", "").strip()
+    titulo = trim_or_none(data.get("titulo"))
+    director = trim_or_none(data.get("director"))
     anio_estreno = data.get("anio_estreno")
-    url_contenido = data.get("url_contenido", "").strip()
-    poster = data.get("poster", "").strip()
-    estado = data.get("estado", "DISPONIBLE")
+    url_contenido = trim_or_none(data.get("url_contenido"))
+    poster = trim_or_none(data.get("poster"))
+    estado = data.get("estado") or "DISPONIBLE"
 
     if not titulo or not director or not anio_estreno or not url_contenido or not poster:
-        return jsonify({
-            "error": "titulo, director, anio_estreno, url_contenido y poster son obligatorios"
-        }), 400
+        return (
+            jsonify(
+                {
+                    "error": "titulo, director, anio_estreno, url_contenido y poster son obligatorios"
+                }
+            ),
+            400,
+        )
 
     if estado not in ESTADOS_VALIDOS:
         return jsonify({"error": f"estado debe ser uno de: {', '.join(ESTADOS_VALIDOS)}"}), 400
@@ -88,7 +91,7 @@ def create_movie():
 
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
-        return jsonify({"error": "Ya existe una película con ese título, director y año"}), 409
+        return jsonify({"error": "Ya existe una pelicula con ese titulo, director y anio"}), 409
 
     finally:
         cursor.close()
@@ -97,11 +100,11 @@ def create_movie():
 
 @movies_bp.route("/<int:id_pelicula>", methods=["PUT"])
 def update_movie(id_pelicula):
-    data = request.get_json(silent=True)
-    if not data:
+    data = get_payload()
+    if data is None:
         return jsonify({"error": "Cuerpo JSON requerido"}), 400
 
-    estado = data.get("estado")
+    estado = data.get("estado") or None
     if estado and estado not in ESTADOS_VALIDOS:
         return jsonify({"error": f"estado debe ser uno de: {', '.join(ESTADOS_VALIDOS)}"}), 400
 
@@ -109,16 +112,16 @@ def update_movie(id_pelicula):
     cursor = conn.cursor()
 
     try:
-       
         cursor.execute(
-            "SELECT * FROM sp_actualizar_pelicula(%s, %s, %s, %s::smallint, %s, %s, %s)",
+            "SELECT * FROM sp_actualizar_pelicula("
+            "%s::bigint, %s, %s, %s::smallint, %s, %s, %s)",
             (
                 id_pelicula,
-                data.get("titulo"),
-                data.get("director"),
+                trim_or_none(data.get("titulo")),
+                trim_or_none(data.get("director")),
                 data.get("anio_estreno"),
-                data.get("url_contenido"),
-                data.get("poster"),
+                trim_or_none(data.get("url_contenido")),
+                trim_or_none(data.get("poster")),
                 estado,
             ),
         )
@@ -130,7 +133,7 @@ def update_movie(id_pelicula):
 
     except psycopg2.errors.NoDataFound:
         conn.rollback()
-        return jsonify({"error": "Película no encontrada"}), 404
+        return jsonify({"error": "Pelicula no encontrada"}), 404
 
     finally:
         cursor.close()
@@ -143,13 +146,13 @@ def delete_movie(id_pelicula):
     cursor = conn.cursor()
 
     try:
-        cursor.execute("SELECT sp_eliminar_pelicula(%s)", (id_pelicula,))
+        cursor.execute("SELECT sp_eliminar_pelicula(%s::bigint)", (id_pelicula,))
         conn.commit()
-        return jsonify({"mensaje": "Película eliminada"}), 200
+        return jsonify({"mensaje": "Pelicula eliminada"}), 200
 
     except psycopg2.errors.NoDataFound:
         conn.rollback()
-        return jsonify({"error": "Película no encontrada"}), 404
+        return jsonify({"error": "Pelicula no encontrada"}), 404
 
     finally:
         cursor.close()

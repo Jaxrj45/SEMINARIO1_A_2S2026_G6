@@ -1,18 +1,23 @@
-# Solo para desarrollo/pruebas locales del backend Node.js.
+# Solo para desarrollo/pruebas locales del backend Python.
 # Levanta un Postgres con el schema.sql y las SPs de database/ ya cargados,
-# para probar los endpoints ANTES de desplegar contra la RDS real.
-# El backend en si (server.js) se corre local con `npm run dev`, no aqui.
+# mas LocalStack para simular S3, y asi probar los endpoints ANTES de
+# desplegar contra la RDS/S3 reales.
+# El backend en si (app.py) se corre local con `flask run`, no aqui.
+# Para produccion usar docker-compose.yml.
 services:
-  db:
+  postgres-local:
     image: postgres:16-alpine
+    container_name: cloudcinema-postgres-local
     restart: unless-stopped
     environment:
       POSTGRES_DB: cloudcinema
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: localdev
+      POSTGRES_USER: cloudcinema_user
+      POSTGRES_PASSWORD: cloudcinema_pass
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
+      # Cada archivo se monta por separado: montar el directorio ../database/sps
+      # sobre /docker-entrypoint-initdb.d tapaba el schema y el seed.
       - ../database/schema.sql:/docker-entrypoint-initdb.d/00_schema.sql:ro
       - ../database/sps/sp_registrar_usuario.sql:/docker-entrypoint-initdb.d/01_sp_registrar_usuario.sql:ro
       - ../database/sps/sp_login.sql:/docker-entrypoint-initdb.d/02_sp_login.sql:ro
@@ -28,12 +33,24 @@ services:
       - ../database/sps/sp_agregar_a_lista.sql:/docker-entrypoint-initdb.d/12_sp_agregar_a_lista.sql:ro
       - ../database/sps/sp_quitar_de_lista.sql:/docker-entrypoint-initdb.d/13_sp_quitar_de_lista.sql:ro
       - ../database/sps/sp_listar_mi_lista.sql:/docker-entrypoint-initdb.d/14_sp_listar_mi_lista.sql:ro
-      - cloudcinema_db_data:/var/lib/postgresql/data
+      - ../database/sps/sp_listar_usuarios.sql:/docker-entrypoint-initdb.d/15_sp_listar_usuarios.sql:ro
+      - ../database/seed.sql:/docker-entrypoint-initdb.d/99_seed.sql:ro
+      - cloudcinema_db_data_py:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d cloudcinema"]
+      test: ["CMD-SHELL", "pg_isready -U cloudcinema_user -d cloudcinema"]
       interval: 5s
       timeout: 3s
       retries: 10
 
+  localstack:
+    image: localstack/localstack:3
+    container_name: cloudcinema-localstack
+    restart: unless-stopped
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=us-east-1
+
 volumes:
-  cloudcinema_db_data:
+  cloudcinema_db_data_py:

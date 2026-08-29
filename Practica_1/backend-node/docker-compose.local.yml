@@ -1,0 +1,40 @@
+# Solo para desarrollo/pruebas locales del backend Node.js.
+# Levanta un Postgres con el schema.sql y las SPs de database/ ya cargados,
+# para probar los endpoints ANTES de desplegar contra la RDS real.
+# El backend en si (server.js) se corre local con `npm run dev`, no aqui.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cloudcinema
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: localdev
+    ports:
+      - "5433:5432"
+    volumes:
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/00_schema.sql:ro
+      - ../database/sps/sp_registrar_usuario.sql:/docker-entrypoint-initdb.d/01_sp_registrar_usuario.sql:ro
+      - ../database/sps/sp_login.sql:/docker-entrypoint-initdb.d/02_sp_login.sql:ro
+      - ../database/sps/sp_existe_correo.sql:/docker-entrypoint-initdb.d/03_sp_existe_correo.sql:ro
+      - ../database/sps/sp_actualizar_perfil.sql:/docker-entrypoint-initdb.d/04_sp_actualizar_perfil.sql:ro
+      - ../database/sps/sp_obtener_perfil.sql:/docker-entrypoint-initdb.d/05_sp_obtener_perfil.sql:ro
+      - ../database/sps/sp_recuperar_password.sql:/docker-entrypoint-initdb.d/06_sp_recuperar_password.sql:ro
+      - ../database/sps/sp_crear_pelicula.sql:/docker-entrypoint-initdb.d/07_sp_crear_pelicula.sql:ro
+      - ../database/sps/sp_actualizar_pelicula.sql:/docker-entrypoint-initdb.d/08_sp_actualizar_pelicula.sql:ro
+      - ../database/sps/sp_eliminar_pelicula.sql:/docker-entrypoint-initdb.d/09_sp_eliminar_pelicula.sql:ro
+      - ../database/sps/sp_obtener_pelicula.sql:/docker-entrypoint-initdb.d/10_sp_obtener_pelicula.sql:ro
+      - ../database/sps/sp_listar_peliculas.sql:/docker-entrypoint-initdb.d/11_sp_listar_peliculas.sql:ro
+      - ../database/sps/sp_agregar_a_lista.sql:/docker-entrypoint-initdb.d/12_sp_agregar_a_lista.sql:ro
+      - ../database/sps/sp_quitar_de_lista.sql:/docker-entrypoint-initdb.d/13_sp_quitar_de_lista.sql:ro
+      - ../database/sps/sp_listar_mi_lista.sql:/docker-entrypoint-initdb.d/14_sp_listar_mi_lista.sql:ro
+      - ../database/sps/sp_listar_usuarios.sql:/docker-entrypoint-initdb.d/15_sp_listar_usuarios.sql:ro
+      - cloudcinema_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cloudcinema"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  cloudcinema_db_data:

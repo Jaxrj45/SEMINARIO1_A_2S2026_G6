@@ -19,7 +19,9 @@ load_dotenv()
 app = Flask(__name__)
 app.json = CloudCinemaJSONProvider(app)
 
-CORS(app, origins=os.environ.get("CORS_ORIGIN") or "*")
+raw_origins = os.environ.get("CORS_ORIGIN", "*")
+origins = [o.strip() for o in raw_origins.split(",")] if raw_origins != "*" else "*"
+CORS(app, origins=origins, supports_credentials=True)
 
 PORT = int(os.environ.get("PORT", 3000))
 SERVER_NAME = os.environ.get("SERVER_NAME", "python")

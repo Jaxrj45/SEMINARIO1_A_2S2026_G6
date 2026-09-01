@@ -6,7 +6,15 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-app.use(cors(process.env.CORS_ORIGIN ? { origin: process.env.CORS_ORIGIN } : {}));
+const rawOrigins = process.env.CORS_ORIGIN;
+const allowedOrigins = rawOrigins 
+  ? rawOrigins.split(',').map(origin => origin.trim()) 
+  : '*';
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;

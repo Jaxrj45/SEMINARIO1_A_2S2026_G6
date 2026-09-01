@@ -1,111 +1,71 @@
-# CloudCinema — Seminario de Sistemas 1
+[ ← Regresar ](../README.md)
+
+<div align="center">
+
+# CloudCinema — Practica 1
+
+**Seminario de Sistemas 1**
+
+Facultad de Ingeniería · Ingeniería en Ciencias y Sistemas
+
+Universidad de San Carlos de Guatemala · Segundo Semestre 2026
+
+</div>
 
 ## Integrantes
-| Nombre | Carné | Rol |
-|---|---|---|
-| _(A)_ | | DevOps / Cloud Infrastructure Lead |
-| _(B)_ | | Backend Node.js Lead |
-| _(C)_ | | Backend Python Lead / DB Specialist |
-| _(D)_ | | Frontend & Integration Lead |
 
-## Estructura del repositorio
+|   #   | Nombre                           |   Carné   |
+| :---: | -------------------------------- | :-------: |
+|   1   | Edwin Alexander Jax Lopez        | 202200338 |
+|   2   | Derek Francisco Orellana Ibáñez  | 202001151 |
+|   3   | Miguel Angel Kanek Balan Velasco | 202300765 |
+|   4   | José Adrian Orozco Ramírez       | 202210908 |
 
-```
-CloudCinema-G#/
-├── backend-node/        → API en Node.js/Express (Integrante B)
-├── backend-python/       → API en Python/Flask o FastAPI (Integrante C)
-├── frontend/              → Sitio estático (Integrante D)
-├── docs/                  → Diagramas y capturas para este README (todos)
-└── README.md              → Este archivo (documentación técnica final)
-```
+## Manual Tecnico
+### Arquitectura utilizada
+La práctica usa una arquitectura basada en servicios de AWS para separar la parte visual, la lógica y los datos del sistema. El contenido web se almacena en un bucket de S3 configurado como sitio web estático, para que la aplicación pueda entregarse de forma rápida y segura al usuario. La lógica del backend se ejecuta en dos instancias EC2 independientes y desplegadas en zonas de disponibilidad distintas (`g6-ec2-nodejs` en us-east-1a y `g6-ec2-python` en us-east-1b), donde se reciben y procesan las solicitudes del sistema. La información principal como usuarios, películas y listas de reproducción se guarda en una base de datos RDS para mantenerla persistente. Además, las imágenes y archivos multimedia también se almacenan en un bucket de S3 para organizar mejor los recursos del proyecto.
 
-> Cada carpeta es **independiente**: cada integrante trabaja únicamente
-> dentro de la suya para evitar sobreescrituras. Nadie edita código
-> dentro de la carpeta de otro sin avisar/hacer PR.
+**Balanceador de carga y grupo de destino.** Frente a las dos instancias se colocó un Application Load Balancer (`g6-alb-cloudcinema`), de esquema *internet-facing* y distribuido en dos zonas de disponibilidad. Este balanceador es el único punto de entrada al backend: el frontend alojado en S3 nunca apunta a la IP pública de una instancia, sino al nombre DNS del balanceador, de modo que el reparto del tráfico es transparente para el usuario.
 
-## Flujo de trabajo en Git (para no pisarse)
+El balanceador escucha las peticiones HTTP y las reenvía a un grupo de destino (*target group*) llamado `g6-tg-backend`, de tipo **instancia**, que registra a las dos EC2 sobre el puerto **3000**. El grupo de destino es el que realmente conoce a los servidores y el que ejecuta las comprobaciones de estado (*health checks*) periódicas contra el endpoint `/health` de cada backend. Solo las instancias que responden correctamente se consideran sanas y reciben tráfico; si una se apaga manualmente o deja de responder, el grupo de destino la marca como *unhealthy* y el balanceador redirige la totalidad de las peticiones a la instancia que sigue en pie, sin que la aplicación web se interrumpa. Como ambos backends (Node.js y Python) exponen exactamente los mismos endpoints, el usuario obtiene la misma respuesta sin importar a cuál de los dos servidores lo dirija el balanceador.
 
-1. **Nunca se hace `push` directo a `main`.** `main` solo recibe código
-   ya probado vía Pull Request.
-2. Cada integrante trabaja en su propia rama, con el prefijo de su
-   carpeta:
-   - `feature/backend-node-auth`
-   - `feature/backend-python-rds`
-   - `feature/frontend-galeria`
-   - `feature/infra-alb`
-3. Flujo básico:
-   ```bash
-   git checkout main
-   git pull origin main
-   git checkout -b feature/backend-node-auth
-   # ... trabajar, hacer commits pequeños y descriptivos ...
-   git push origin feature/backend-node-auth
-   # Abrir Pull Request en GitHub -> pedir review a 1 compañero -> merge
-   ```
-4. Antes de empezar a trabajar cada día: `git pull origin main` para
-   traer lo último y evitar conflictos grandes.
-5. Como cada quien vive en su propia carpeta (`backend-node/`,
-   `backend-python/`, `frontend/`), los conflictos de merge deberían
-   ser casi nulos. El único archivo compartido es este `README.md` —
-   edítenlo en secciones separadas y avisen en el chat del grupo antes
-   de tocarlo.
-6. Colaborador obligatorio: agregar a **marckomatic** (auxiliar, sección B)
-   como colaborador del repo privado.
+Esta estructura facilita la escalabilidad, reduce la carga operativa y hace más fácil mantener la aplicación en producción, además de garantizar la alta disponibilidad del servicio.
 
-## Contrato de Endpoints (Node.js y Python responden igual)
+![Arquitectura utilizada](docs/assets/arquitectura-aws.svg)
 
-Ambos backends exponen **exactamente** los mismos paths, los mismos codigos
-de estado y el mismo JSON. Todo acceso a datos pasa por los procedimientos
-almacenados de `database/sps/`.
+### Usuarios IAM utilizados
 
-| Metodo | Endpoint | SP que usa | Descripcion |
-|---|---|---|---|
-| GET | `/health` | — | Estado del nodo (`{status, server}`) |
-| GET | `/auth/check-email?correo=` | `sp_existe_correo` | Valida si un correo ya esta registrado |
-| POST | `/auth/register` | `sp_registrar_usuario` | Registro (correo, nombre_completo, password, password_confirm, foto_perfil) |
-| POST | `/auth/login` | `sp_login` | Autenticacion (correo, password) |
-| POST | `/auth/forgot-password` | `sp_recuperar_password` | Reset de contrasena por correo |
-| GET | `/auth/obtenerUsuarios` | `sp_listar_usuarios` | Listado de usuarios registrados |
-| GET | `/movies?id_usuario=` | `sp_listar_peliculas` | Cartelera (con `id_usuario` agrega `en_mi_lista`) |
-| GET | `/movies/:id` | `sp_obtener_pelicula` | Detalle de una pelicula |
-| POST | `/movies` | `sp_crear_pelicula` | Alta de pelicula |
-| PUT | `/movies/:id` | `sp_actualizar_pelicula` | Edicion (los campos ausentes se conservan) |
-| DELETE | `/movies/:id` | `sp_eliminar_pelicula` | Baja de pelicula |
-| POST | `/playlist` | `sp_agregar_a_lista` | Agregar pelicula a "mi lista" |
-| GET | `/playlist?id_usuario=` | `sp_listar_mi_lista` | Lista de reproduccion del usuario |
-| DELETE | `/playlist/:id_lista?id_usuario=` | `sp_quitar_de_lista` | Eliminar pelicula de la lista |
-| GET | `/profile/:id_usuario` | `sp_obtener_perfil` | Datos del perfil |
-| PUT | `/profile` | `sp_actualizar_perfil` | Editar nombre/foto (requiere password actual) |
-| POST | `/uploads/profile-photo` | — | Sube una imagen a S3 y devuelve `{key, url}` |
+Se crearon cuatro usuarios de IAM, cada uno con una política adaptada al servicio que le corresponde administrar, siguiendo el principio de mínimo privilegio: ningún usuario tiene acceso a servicios que no necesita para su parte de la práctica.
 
-### Notas del contrato
+![Usuarios de IAM](docs/assets/usuarios-iam.png)
 
-- **Imagenes**: `/auth/register` y `PUT /profile` aceptan `application/json`
-  (con `foto_perfil` = key ya subida via `/uploads/profile-photo`) o
-  `multipart/form-data` (con `foto_perfil` = archivo, que el backend sube a S3).
-  Las respuestas siempre devuelven la URL publica completa.
-- **`POST /playlist` es idempotente**: si la pelicula ya estaba en la lista
-  responde `200` con `ya_estaba: true`; si se agrego responde `201`.
-- **Errores**: los ERRCODE de los SPs se mapean igual en ambos backends —
-  `unique_violation` → 409, `no_data_found` → 404, `check_violation` → 400,
-  `invalid_password` → 401.
-- **Fechas**: siempre ISO-8601 UTC con milisegundos (`2026-08-28T10:00:00.000Z`).
-- **IDs**: siempre numeros JSON, nunca strings.
+| Usuario  | Servicio | Permisos otorgados |
+| -------- | -------- | ------------------ |
+| `D3r3k`  | Administrador | Acceso administrativo sobre la cuenta. Se usó para crear los demás usuarios de IAM, la base de datos en RDS y el balanceador de carga con su grupo de destino. |
+| `bucket` | S3 | Limitado a los dos buckets de la práctica: listar buckets, leer, subir y eliminar objetos, y configurar el acceso público, la política, el sitio web estático y el CORS. Sin acceso a EC2, RDS ni IAM. |
+| `jax`    | EC2 | Listar las instancias, ver su detalle y estado, iniciarlas, detenerlas y reiniciarlas, y consultar sus grupos de seguridad. Sin acceso a S3, RDS ni IAM. |
+| `jose`   | EC2 | Mismos permisos que `jax`. |
 
-> Si Node.js y Python no exponen exactamente los mismos paths y
-> formatos de respuesta, el Load Balancer rompera la app al hacer
-> failover entre instancias.
+### Diagrama Entidad Relacion
+![Diagrama Entidad Relacion](docs/assets/er.png)
 
-## Documentación técnica (a completar por Integrante D antes de entregar)
+### Capturas de pantalla
 
-- [ ] Diagrama de arquitectura AWS
-- [ ] Descripción de usuarios/políticas IAM
-- [ ] Diagrama entidad-relación de la base de datos
-- [ ] Capturas: Buckets S3, EC2 (ambas instancias), RDS, App Web funcionando
-- [ ] Evidencia de prueba de failover del Load Balancer
+- Buckets de S3  
+  ![Buckets de S3](docs/assets/s3.png)
 
-## Variables de entorno
+- EC2  
+  ![EC2](docs/assets/ec2.png)
 
-Cada backend trae su propio `.env.example`. Copien ese archivo a `.env`
-(el cual NUNCA se sube a git — ya está en `.gitignore`) y llenen sus
-credenciales reales de AWS/RDS ahí.
+- Balanceador de carga (Application Load Balancer)  
+  ![Balanceador de carga](docs/assets/alb.png)
+
+- Grupo de destino (Target Group)  
+  ![Grupo de destino](docs/assets/tg.png)
+
+- Base de datos RDS  
+  ![Base de datos RDS](docs/assets/rds.png)
+
+- Aplicacion web  
+  ![Aplicación web](docs/assets/app-web1.png)
+

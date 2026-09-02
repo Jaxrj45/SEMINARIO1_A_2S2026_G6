@@ -1,0 +1,22 @@
+# Produccion: corre la API con gunicorn contra la RDS y el S3 reales del .env.
+# Para levantar Postgres/LocalStack de pruebas usar docker-compose.local.yml.
+services:
+  api:
+    build: .
+    container_name: cloudcinema-backend-python
+    restart: always
+    init: true
+    env_file: .env
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${PORT:-3000}/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

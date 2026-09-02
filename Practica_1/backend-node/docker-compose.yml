@@ -1,0 +1,22 @@
+# Produccion: corre la API contra la RDS y el S3 reales configurados en .env.
+# Para levantar un Postgres local de pruebas usar docker-compose.local.yml.
+services:
+  api:
+    build: .
+    container_name: cloudcinema-backend-node
+    restart: always
+    init: true
+    env_file: .env
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:${PORT:-3000}/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,0 +1,28 @@
+# --- Node.js (backend-node) ---
+backend-node/node_modules/
+backend-node/npm-debug.log*
+backend-node/.env
+
+# --- Python (backend-python) ---
+backend-python/__pycache__/
+backend-python/*.pyc
+backend-python/venv/
+backend-python/.venv/
+backend-python/.env
+
+# --- Frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# --- General ---
+.DS_Store
+*.log
+.vscode/
+.idea/
+*.pem
+*.key
+credentials*.json
+# Python cache universal
+**/__pycache__/
+*.pyc

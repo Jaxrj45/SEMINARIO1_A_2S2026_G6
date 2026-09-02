@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  /* Nuestro Tema Exclusivo para CloudCinema */
+  --color-cinema-base: #0f172a; /* Un azul/gris extremadamente oscuro (Slate 900) */
+  --color-cinema-panel: #1e293b; /* Para las tarjetas y menús (Slate 800) */
+  --color-cinema-primary: #10b981; /* Un verde esmeralda vibrante */
+  --color-cinema-primary-hover: #059669; /* Verde más oscuro para cuando pasas el ratón */
+
+  /* Animación para el carrusel */
+  --animate-fade-in: fade-in 1s ease-in-out;
+  @keyframes fade-in {
+    from { opacity: 0.4; }
+    to { opacity: 1; }
+  }
+}
+
+body {
+  /* Aplicamos el fondo oscuro base de nuestro tema */
+  background-color: var(--color-cinema-base);
+  color: white;
+  margin: 0;
+  padding: 0;
+  /* Le agregamos una sutil gradiente verde difuminada en la parte superior para ese toque premium */
+  background-image: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.15) 0%, transparent 50%);
+  background-repeat: no-repeat;
+  min-height: 100vh;
+}

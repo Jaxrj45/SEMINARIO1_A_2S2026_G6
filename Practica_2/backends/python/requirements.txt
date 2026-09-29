@@ -1,0 +1,9 @@
+Flask==3.0.3
+Flask-Cors==4.0.1
+PyJWT==2.9.0
+python-dotenv==1.0.1
+psycopg2-binary==2.9.11
+boto3==1.35.36
+azure-storage-blob==12.26.0
+gunicorn==23.0.0
+requests==2.32.3

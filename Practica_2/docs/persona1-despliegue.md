@@ -7,52 +7,38 @@ Las líneas **Capturas:** y las marcas **(captura)** indican qué capturar para 
 ## Día 1: entregables para el grupo
 
 - [ ] Compartir [contrato-api.md](contrato-api.md). La sección 6 dice qué le toca a cada quien.
-- [ ] Crear los usuarios IAM por servicio (sección 1) y entregar las credenciales por privado (nunca en el repo).
+- [ ] Crear la política y los usuarios IAM (sección 1) y entregar a cada integrante su `.csv` por privado (nunca en el repo).
 - [ ] Definir un `JWT_SECRET` (cualquier cadena larga y aleatoria) y pasárselo a Persona 2 por privado.
 
 ---
 
-## 1. IAM: un usuario por servicio
+## 1. IAM: políticas y usuarios
 
-Cada usuario tiene **solo las políticas de su servicio**, como pide el enunciado. Los servicios que en AWS pertenecen a la misma consola comparten usuario: el Load Balancer y los security groups son parte de **EC2**, así que los maneja `g6-ec2`.
+Todo se hace con la **cuenta raíz**, en **IAM** (buscador de arriba de la consola → "IAM"). Quedan **1 política propia, 5 usuarios y 1 rol**.
 
-| Usuario | Servicio | Políticas administradas | Lo usa |
+| Usuario | Para quién | Políticas | Acceso |
 |---|---|---|---|
-| `g6-ec2` | EC2: instancias, security groups (incluido el de RDS), Load Balancer | `AmazonEC2FullAccess`, `ElasticLoadBalancingFullAccess` | Persona 1, Persona 2 |
-| `g6-rds` | RDS | `AmazonRDSFullAccess` | Persona 3 |
-| `g6-s3` | S3 | `AmazonS3FullAccess` | Persona 3 |
-| `g6-lambda` | Lambda | `AWSLambda_FullAccess` | Persona 4 |
-| `g6-apigateway` | API Gateway | `AmazonAPIGatewayAdministrator` | Persona 4 |
-| `g6-app-s3` | S3, solo acceso programático | `G6-App-S3-Archivos` (política propia) | Los backends Node y Python (`.env`) |
+| `d3r3k` | Derek | `AmazonEC2FullAccess`, `ElasticLoadBalancingFullAccess` | Consola |
+| `jax` | Jax | `AmazonEC2FullAccess` | Consola |
+| `miguel` | Miguel | `AmazonS3FullAccess`, `AmazonRDSFullAccess`, `AmazonEC2FullAccess` (\*) | Consola |
+| `jose` | José | `AWSLambda_FullAccess`, `AmazonAPIGatewayAdministrator`, `AmazonS3FullAccess` | Consola |
+| `g6-backend-s3` | Los backends de las 2 EC2 | `G6-S3-Archivos` (política propia) | Solo llaves de acceso |
 
-Notas:
-- El security group de la RDS es un recurso de EC2. Por eso la regla del puerto 5432 la agrega `g6-ec2` y no `g6-rds`.
-- `AmazonEC2FullAccess` ya incluye `elasticloadbalancing:*`. `ElasticLoadBalancingFullAccess` se adjunta igual para que en la captura se vea explícito que el usuario administra el balanceador.
+(\*) El security group de la RDS se edita desde EC2. Miguel lo necesita para abrir el puerto 5432.
 
-### 1.1 Crear los usuarios de consola
+### 1.1 Crear la política `G6-S3-Archivos`
 
-1. Consola de AWS → **IAM** → **Users** → **Create user**.
-2. *User name*: `g6-ec2`.
-3. Marcar **Provide user access to the AWS Management Console** → **I want to create an IAM user**.
-4. *Console password*: **Custom password**. Dejar marcado **Users must create a new password at next sign-in**. → **Next**.
-5. *Permissions options*: **Attach policies directly**. Buscar y marcar las políticas del usuario según la tabla. → **Next** → **Create user**.
-6. **Download .csv file**: trae la URL de inicio de sesión, el usuario y la contraseña. Entregárselo por privado a quien lo use.
-7. Repetir con `g6-rds`, `g6-s3`, `g6-lambda` y `g6-apigateway`.
+Para las personas no hace falta crear políticas: AWS ya trae las *FullAccess* de cada servicio. Solo se crea una para los backends y las Lambdas, que únicamente suben archivos al bucket.
 
-**Capturas:** Lista de usuarios · Pestaña *Permissions* de cada usuario
-
-### 1.2 Crear el usuario de los backends (`g6-app-s3`)
-
-Los servidores solo necesitan subir archivos al bucket. Por eso este usuario no tiene consola y su única política es escribir en el bucket de archivos.
-
-1. **IAM** → **Policies** → **Create policy** → pestaña **JSON**. Pegar lo siguiente, cambiando el nombre del bucket por el que cree Persona 3:
+1. **Policies** → **Create policy**.
+2. En *Policy editor*, cambiar de **Visual** a **JSON**.
+3. Borrar lo que haya y pegar lo siguiente, con el nombre del bucket que cree Miguel. La política se puede crear aunque el bucket aún no exista:
 
    ```json
    {
      "Version": "2012-10-17",
      "Statement": [
        {
-         "Sid": "BackendSubeArchivos",
          "Effect": "Allow",
          "Action": ["s3:PutObject", "s3:GetObject"],
          "Resource": "arn:aws:s3:::practica2semi1a2s2026archivosg6/*"
@@ -61,19 +47,62 @@ Los servidores solo necesitan subir archivos al bucket. Por eso este usuario no 
    }
    ```
 
-2. **Next**. *Policy name*: `G6-App-S3-Archivos` → **Create policy**.
-3. **Users** → **Create user**. *User name*: `g6-app-s3`. **No** marcar el acceso a consola. → **Next**.
-4. **Attach policies directly** → buscar y marcar `G6-App-S3-Archivos` → **Next** → **Create user**.
-5. Entrar al usuario → pestaña **Security credentials** → **Create access key** → *Use case*: **Other** → **Next** → **Create access key**.
-6. **Download .csv file**. Ese `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY` van en el `.env` de las EC2 y las VM. Pasárselos a Persona 2 por privado.
+4. **Next** → *Policy name*: `G6-S3-Archivos` → **Create policy**.
 
-**Capturas:** Política JSON `G6-App-S3-Archivos` · Usuario `g6-app-s3` sin acceso a consola
+**Capturas:** JSON de la política `G6-S3-Archivos`
+
+### 1.2 Crear los usuarios de las personas
+
+Repetir para `persona1-derek`, `persona2-jax`, `persona3-miguel` y `persona4-jose`:
+
+1. **Users** → **Create user**.
+2. *User name*: el de la tabla.
+3. Marcar **Provide user access to the AWS Management Console**. Si pregunta, elegir **I want to create an IAM user**.
+4. *Console password*: **Custom password** (temporal). Dejar marcado **Users must create a new password at next sign-in** → **Next**.
+5. **Attach policies directly** → buscar y marcar las políticas de la tabla, limpiando el buscador entre una y otra → **Next**.
+6. **Create user** → **Download .csv file**. Esta pantalla aparece una sola vez.
+
+Entregar a cada integrante **solo su** `.csv`, por mensaje privado.
+
+**Capturas:** Lista de usuarios · Pestaña *Permissions* de cada usuario
+
+### 1.3 Crear el usuario de los backends (`g6-backend-s3`)
+
+1. **Users** → **Create user** → *User name*: `g6-backend-s3`. **No** marcar el acceso a consola → **Next**.
+2. **Attach policies directly** → en *Filter by Type* elegir **Customer managed** → marcar `G6-S3-Archivos` → **Next** → **Create user**.
+3. Entrar al usuario → pestaña **Security credentials** → **Create access key** → *Use case*: **Other** → **Next** → **Create access key**.
+4. **Download .csv file**. El *Secret access key* solo se muestra esta vez.
+
+Esas llaves van en el `.env` de las **2 EC2** (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`). Las VMs de Azure no las necesitan porque suben a Blob. Pasárselas a Jax por privado y nunca subirlas al repo.
+
+**Capturas:** Usuario `g6-backend-s3` sin acceso a consola, con la política `G6-S3-Archivos`
+
+### 1.4 Crear el rol para Lambda (`g6-lambda-role`)
+
+Toda función Lambda necesita un rol, y `AWSLambda_FullAccess` no permite crearlo. Si no se crea aquí, José se queda bloqueado.
+
+1. **Roles** → **Create role** → **AWS service** → *Use case*: **Lambda** → **Next**.
+2. Marcar `AWSLambdaBasicExecutionRole` y `G6-S3-Archivos` → **Next**.
+3. *Role name*: `g6-lambda-role` → **Create role**.
+4. Avisar a José que, al crear cada función, elija **Use an existing role** → `g6-lambda-role`.
+
+**Captura:** Rol `g6-lambda-role` con sus 2 políticas
+
+### 1.5 Entregar y probar
+
+| Persona | Recibe (por privado) |
+|---|---|
+| Jax | Su `.csv` y las llaves de `g6-backend-s3` |
+| Miguel | Su `.csv` |
+| José | Su `.csv` y el nombre del rol `g6-lambda-role` |
+
+Para probar: en una ventana de incógnito, entrar a la URL del `.csv` (`https://<AccountID>.signin.aws.amazon.com/console`) con `persona1-derek` y cambiar la contraseña temporal. EC2 debe abrir, y S3 o RDS deben mostrar *Access Denied*.
 
 ---
 
 ## 2. EC2 del backend Node (AWS)
 
-Inicia sesión con `g6-ec2`. Todo va en la región **us-east-1 (N. Virginia)**.
+Inicia sesión con `persona1-derek`. Todo va en la región **us-east-1 (N. Virginia)**.
 
 ### 2.1 Security groups
 
@@ -85,7 +114,7 @@ Inicia sesión con `g6-ec2`. Todo va en la región **us-east-1 (N. Virginia)**.
    - Regla 1: Type **Custom TCP**, Port **5000**, Source **Custom** → elegir `sg-elb-g6` en la lista. Así solo el balanceador llega al backend.
    - Regla 2: Type **SSH**, Port 22, Source **My IP**.
    - **Create security group**.
-4. Cuando Persona 3 cree la RDS, abrir su security group (lo hace `g6-ec2`):
+4. Cuando Persona 3 cree la RDS, abrir su security group (lo puede hacer `persona1-derek` o `persona3-miguel`, ambos tienen `AmazonEC2FullAccess`):
    - Security group de la RDS → **Edit inbound rules** → **Add rule**: Type **PostgreSQL** (5432), Source **Custom** → `sg-backend-g6`.
 
 Persona 2 usa este mismo `sg-backend-g6` para la EC2 de Python.
@@ -145,8 +174,8 @@ Persona 2 usa este mismo `sg-backend-g6` para la EC2 de Python.
    STORAGE_PROVIDER=aws
    S3_BUCKET=<bucket de archivos>
    AWS_REGION=us-east-1
-   AWS_ACCESS_KEY_ID=<de g6-app-s3>
-   AWS_SECRET_ACCESS_KEY=<de g6-app-s3>
+   AWS_ACCESS_KEY_ID=<de g6-backend-s3>
+   AWS_SECRET_ACCESS_KEY=<de g6-backend-s3>
    PORT=5000
    ```
 
@@ -167,7 +196,7 @@ Persona 2 usa este mismo `sg-backend-g6` para la EC2 de Python.
 
 ## 3. Load Balancer (ELB)
 
-Sigue con el usuario `g6-ec2`. Antes de empezar, la EC2 de Python (Persona 2) tiene que estar corriendo en una subnet de **us-east-1b** con `sg-backend-g6`.
+Sigue con el usuario `persona1-derek`. Antes de empezar, la EC2 de Python (Persona 2) tiene que estar corriendo en una subnet de **us-east-1b** con `sg-backend-g6`.
 
 ### 3.1 Target group
 
@@ -248,7 +277,7 @@ Usa el **mismo grupo de recursos, región y VNet** que la VM de Python de Person
    Las líneas de S3 pueden quedar vacías.
 
 3. `curl http://127.0.0.1:5000/health` debe responder `{"status":"ok","server":"node"}`.
-4. Con `g6-ec2`, agregar en el security group de la RDS la regla **PostgreSQL 5432** con origen `<IP-publica-de-la-VM>/32`. La RDS tiene que estar en *Publicly accessible: Yes* (lo configura Persona 3).
+4. Con `persona1-derek`, agregar en el security group de la RDS la regla **PostgreSQL 5432** con origen `<IP-publica-de-la-VM>/32`. La RDS tiene que estar en *Publicly accessible: Yes* (lo configura Persona 3).
 5. Avisar a Persona 2 que `vm-node-g6` está lista para agregarla al backend pool del Azure Load Balancer (puerto 5000, probe HTTP en `/health`).
 
 **Capturas:** `pm2 status` y salida de `curl /health` en la VM
@@ -259,7 +288,7 @@ Usa el **mismo grupo de recursos, región y VNet** que la VM de Python de Person
 
 - [ ] Contrato de API compartido
 - [ ] Backend Node (TypeScript) probado contra el contrato (`test_api.py` 17/17)
-- [ ] Usuarios IAM por servicio y credenciales entregadas
+- [ ] Política `G6-S3-Archivos`, usuarios por persona, `g6-backend-s3` y `g6-lambda-role` creados
 - [ ] EC2 Node con SG mínimo (5000 solo desde el ELB, 22 desde tu IP) y PM2 como servicio
 - [ ] SG de RDS abierto al 5432 solo desde `sg-backend-g6` y las IP de las VM
 - [ ] ELB con los 2 targets *healthy*

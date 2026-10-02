@@ -162,7 +162,7 @@ Los SP devuelven `created_at` ya formateado en ISO 8601 (UTC). Los backends solo
 | `JWT_SECRET` / `JWT_HOURS` | Valor compartido / `8` | Igual |
 | `PORT` | `5000` | `5000` |
 | `STORAGE_PROVIDER` | `aws` | `azure` |
-| `S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Bucket de archivos y llaves del usuario IAM `g6-app-s3` | Vacías |
+| `S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Bucket de archivos y llaves del usuario IAM `g6-backend-s3` | Vacías |
 | `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER` | Vacías | Cuenta de almacenamiento y contenedor de archivos |
 
 ## 6. Pendientes por integrante

@@ -39,38 +39,31 @@ Es lo más simple de pasar por API Gateway y APIM, sin manejar multipart. Limita
 
 ---
 
-## 1. Qué necesitas de cada compañero
+## 1. Punto de partida
 
-| De quién | Qué | Para qué paso | Cuándo lo pide la guía |
-|---|---|---|---|
-| Persona 1 (Derek) | Credenciales `g6-lambda` y `g6-apigateway` (.csv) | Pasos 3 y 4 | Escenario B |
-| Persona 1 | Un **rol de ejecución** de Lambda con `s3:PutObject` sobre el bucket de archivos (o `iam:PassRole` para `g6-lambda`) | Paso 3 | Escenario B |
-| Persona 3 (Miguel) | Nombre del **bucket S3 de archivos** | Pasos 3, 4 | Escenario B |
-| Persona 3 | Bucket con **objetos públicos** y **CORS** (`GET`) | Pasos 3-4 (prueba) | Escenario B |
-| Persona 3 | Nombre de la **cuenta de almacenamiento** y el **contenedor de archivos** de Azure, con acceso público de lectura y CORS | Paso 5-6 | Escenario B |
-| Todos | Su sección del README con capturas | Paso 9 | Al final |
-| A quién le das | Las **4 URLs** a Persona 3 | Paso 7 | Antes de compilar el frontend |
+Ya tienes acceso a AWS y Azure. Antes de empezar, ten a la mano (pídeselo al grupo si te falta algo):
 
-Mensaje listo para mandar al grupo:
+| De quién | Qué | Para qué paso |
+|---|---|---|
+| Persona 1 (Derek) | Credenciales `g6-lambda` y `g6-apigateway` (.csv) | Pasos 3 y 4 |
+| Persona 1 | **Rol de ejecución** de Lambda con `s3:PutObject` sobre el bucket de archivos | Paso 3 |
+| Persona 3 (Miguel) | Nombre del **bucket S3 de archivos** (objetos públicos + CORS `GET`) | Pasos 3 y 4 |
+| Persona 3 | **Cuenta de almacenamiento** y **contenedor de archivos** de Azure (lectura pública + CORS) | Pasos 5 y 6 |
+| Todos | Su sección del README con capturas | Paso 9 |
+| A quién le das | Las **4 URLs** a Persona 3 | Paso 7 |
 
-> Necesito: (1) nombre exacto del bucket S3 de archivos, (2) credenciales de g6-lambda y g6-apigateway, (3) un rol de ejecución de Lambda con s3:PutObject sobre ese bucket (o iam:PassRole para g6-lambda). De Azure: cuenta de almacenamiento y contenedor de archivos, con acceso público de lectura y CORS. Yo les doy a Miguel las 4 URLs de las rutas serverless.
+Todo se hace con los recursos reales del grupo. Si el bucket o el contenedor aún no existen, avísale a Miguel; no hace falta crear recursos de prueba.
 
----
+> Las capturas de AWS deben ser con los **usuarios IAM del grupo** (`g6-lambda`, `g6-apigateway`), no con tu cuenta personal.
 
-## 2. Dos formas de trabajar
-
-### Escenario A: todavía no tienes nada de tus compañeros
-No te quedes esperando. Haz esto con tu propia cuenta y recursos de prueba, y al final repites con los recursos del grupo:
-
-1. **Azure primero** (es lo que más tarda y vale más: 40 pts): crea tu Resource Group, una Storage Account de prueba con un contenedor público, la Function App y la API Management (Paso 5-6). APIM tarda de 30 a 40 minutos en crearse en el tier Developer; déjala creándose y sigue.
-2. **AWS de prueba** (opcional, si tienes cuenta personal): un bucket público de prueba, las 2 Lambdas y un API Gateway (Pasos 3-4), con el rol básico que AWS crea solo. Sirve para aprender y validar el código.
-3. **Escribe tu documentación** mientras aprendes (Paso 9): captura todo lo que hagas.
-4. Cuando lleguen los recursos reales, cambia **solo** estas variables: `S3_BUCKET` en las Lambdas, `AZURE_STORAGE_CONNECTION_STRING` y `AZURE_STORAGE_CONTAINER` en la Function App. El código no cambia.
-
-> Para la entrega final, las capturas de AWS deben ser con los **usuarios IAM del grupo** (`g6-lambda`, `g6-apigateway`), no con tu cuenta personal.
-
-### Escenario B: ya tienes todo
-Sigue la guía de corrido, Pasos 3 a 10.
+### Checklist de arranque (vas de cero)
+1. [ ] Confirma con Derek y Miguel los datos de la tabla.
+2. [ ] Azure: crea el Resource Group y **APIM** primero (6.1). Tarda; déjala creándose.
+3. [ ] Azure: Function App + despliegue (5.3 a 5.6).
+4. [ ] Azure: rutas, CORS y URLs de APIM (6.2 a 6.5).
+5. [ ] AWS: 2 Lambdas (Paso 3) y API Gateway (Paso 4).
+6. [ ] Mandar las 4 URLs a Miguel (Paso 7).
+7. [ ] Repo y README final (Pasos 8 y 9).
 
 ---
 
@@ -85,7 +78,7 @@ Usuario: `g6-lambda`. Región: **us-east-1 (N. Virginia)** (confirma abajo a la 
 ### 3.2 Crear `g6-subir-imagen`
 1. Buscador → **Lambda** → **Create function** → **Author from scratch**.
 2. *Function name:* `g6-subir-imagen`. *Runtime:* **Node.js 22.x**. *Architecture:* x86_64.
-3. *Permissions* → **Change default execution role** → **Use an existing role** → elige el rol que te dio Derek. Si aún no existe, deja *Create a new role with basic Lambda permissions* y arregla los permisos después (3.5).
+3. *Permissions* → **Change default execution role** → **Use an existing role** → elige el rol que te dio Derek. Si no te aparece, deja *Create a new role with basic Lambda permissions* y pídele a Derek que le agregue el permiso (3.5).
 4. **Create function**.
 5. Pestaña **Code** → abre `index.mjs` → borra todo y pega el contenido de [`aws-lambda/subir-imagen.mjs`](aws-lambda/subir-imagen.mjs) → **Deploy**.
 6. **Configuration** → **General configuration** → **Edit** → *Timeout* `15 sec` → **Save**.
@@ -173,17 +166,12 @@ Debe regresar `{"url":"https://...","name":"nota.txt","type":"text"}`. Abre la `
 
 ---
 
-## 5. Azure: Storage de prueba, Function App y código
-
-> Si Persona 3 ya creó la cuenta de almacenamiento y el contenedor de archivos, **sáltate 5.1** y usa los suyos.
+## 5. Azure: Storage, Function App y código
 
 Todo en `portal.azure.com`. Crea un **Resource Group** (por ejemplo `rg-g6-serverless`) para agrupar tus recursos.
 
-### 5.1 (Solo en el Escenario A) Storage de prueba
-1. **Storage accounts** → **Create** → mismo Resource Group → nombre único en minúsculas (`g6serverlesstest`) → *Redundancy* LRS → **Review + create**.
-2. En la cuenta: **Settings → Configuration → Allow Blob anonymous access: Enabled**.
-3. **Containers** → **+ Container** → nombre `archivos` → *Anonymous access level:* **Blob (anonymous read access for blobs only)**.
-4. **Resource sharing (CORS)** → pestaña Blob service → agrega: origen `*`, métodos `GET`, headers `*`, max age `3600`.
+### 5.1 Storage del grupo
+Usa la cuenta de almacenamiento y el contenedor que creó Persona 3. Verifica que el contenedor tenga acceso anónimo de lectura (*Blob*) y CORS con `GET`. No crees otro.
 
 ### 5.2 Cadena de conexión
 Cuenta de almacenamiento → **Security + networking → Access keys** → *Connection string* → **Show** → copia. Es un secreto: **no va al repositorio**.
@@ -321,9 +309,9 @@ Debes saber explicar todo el sistema, no solo lo tuyo:
 
 | Cuándo | Qué |
 |---|---|
-| Día 1 | Mandar el mensaje de la sección 1. Crear Resource Group, Storage de prueba y **APIM** (Pasos 5.1 y 6.1) para que APIM se vaya creando |
-| Día 1-2 | Function App y despliegue (5.3 a 5.6), después las rutas de APIM (6.2 a 6.5) |
-| En cuanto lleguen los accesos | Lambdas (Paso 3), API Gateway (Paso 4), cambiar las variables a los recursos reales |
+| Primero | Resource Group y **APIM** (6.1), para que se vaya creando |
+| Después | Function App y despliegue (5.3 a 5.6), luego rutas de APIM (6.2 a 6.5) |
+| Luego | Lambdas (Paso 3) y API Gateway (Paso 4) |
 | Antes de compilar el frontend | Entregar las 4 URLs (Paso 7) |
 | Siempre | Capturas mientras haces cada paso |
 | Antes del 6 oct | Repo (Paso 8), README (Paso 9), repasar preguntas (Paso 10) |

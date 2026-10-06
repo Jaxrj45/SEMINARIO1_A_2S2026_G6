@@ -209,7 +209,17 @@ Bucket de archivos con acceso público de lectura:
 
 #### Azure Load Balancer
 
-> **Pendiente:** pool de backend, sonda de salud y regla de balanceo (Edwin).
+Peticiones a `/health` por el balanceador: responden los dos backends.
+
+![Balanceo entre los dos backends](docs/img/prueba-balanceo.png)
+
+Prueba de falla: se detiene `vm-python-g6` desde el portal y el balanceador sigue respondiendo solo con `node`.
+
+![VM Python detenida](docs/img/azure-vm-python-detenida.png)
+
+![Prueba de falla](docs/img/prueba-falla.png)
+
+> **Pendiente:** pool de backend, sonda de salud y regla de balanceo del recurso (Edwin).
 
 #### Azure Functions
 
@@ -230,15 +240,11 @@ Bucket de archivos con acceso público de lectura:
 | Prueba | Resultado |
 | ------ | --------- |
 | Registro en el servidor de Azure y login en el de AWS con el mismo usuario; el token de Azure se acepta en AWS | La base de datos es compartida y el secreto JWT es el mismo |
-| 20 peticiones a `/health` por el balanceador | Responden ambos servidores (`python` 11, `node` 9) |
-| Con un servidor apagado, 20 peticiones a `/health` | Responde solo el servidor activo (`node` 20) |
+| 20 peticiones a `/health` por el Azure Load Balancer | Responden ambos servidores (`python` 11, `node` 9) |
+| Con `vm-python-g6` detenida, 20 peticiones a `/health` | Responde solo el servidor activo (`node` 20) |
 | Subida de texto e imagen por las 4 rutas serverless | `201` con la URL del archivo |
 
 ![Base de datos compartida](docs/img/prueba-cruzada-bd-compartida.png)
-
-![Balanceo entre los dos backends](docs/img/prueba-balanceo.png)
-
-![Prueba de falla](docs/img/prueba-falla.png)
 
 ![Rutas serverless de AWS y Azure](serverless/capturas/pruebas-4-rutas.png)
 

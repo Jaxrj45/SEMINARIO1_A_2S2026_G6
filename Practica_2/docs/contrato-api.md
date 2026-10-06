@@ -12,14 +12,13 @@ Contrato único que implementan **backends/node** (Persona 1) y **backends/pytho
 | Puerto | **5000** en ambos servidores. El Azure Load Balancer usa un solo puerto de backend para todo el pool, así que no puede ser distinto. |
 | Health check | `GET /health`, que responde `200`. Es la ruta de health probe en el ELB y en el Azure LB. |
 | Prefijo | Todas las rutas de negocio empiezan con `/api`. |
-| Formato | JSON (UTF-8). Las subidas usan `multipart/form-data`. |
+| Formato | Solo JSON (UTF-8). Los backends no reciben archivos: los suben Lambda / Azure Functions y el backend guarda la URL. |
 | Nombres de campo | En inglés y camelCase (`profileImageUrl`, `createdAt`). |
 | Fechas | UTC, ISO 8601 sin zona: `"2026-09-29T15:43:07"`. |
 | Errores | Siempre `{ "error": "mensaje" }` con el código HTTP que corresponda. |
 | Autenticación | Header `Authorization: Bearer <token>`. JWT HS256 con claims `sub` (id del usuario **como string**), `username` y `exp`. |
 | JWT_SECRET | Tiene el **mismo valor** en los 4 servidores. Así un token emitido por Node se valida en Python y viceversa. |
 | Contraseñas | bcrypt calculado **dentro de la base** con `pgcrypto` (`sp_registrar_usuario` / `sp_login`). Los backends nunca hashean ni comparan contraseñas. |
-| Tamaño máximo | 10 MB por archivo. Si se supera, responde `413`. |
 | CORS | Abierto (`*`), porque el frontend se sirve desde S3 y desde Blob. |
 
 ## 2. Endpoints
@@ -35,7 +34,7 @@ Contrato único que implementan **backends/node** (Persona 1) y **backends/pytho
 | PATCH | `/api/tasks/:id/complete` | Sí | Marca o desmarca como completada |
 | DELETE | `/api/tasks/:id` | Sí | Elimina una tarea |
 | GET | `/api/files` | Sí | Lista los archivos del usuario |
-| POST | `/api/files` | Sí | Sube un archivo (multipart) **o** registra uno ya subido por serverless (JSON) |
+| POST | `/api/files` | Sí | Registra un archivo ya subido por serverless |
 | GET | `/api/files/:id` | Sí | Metadatos y URL pública de un archivo |
 
 Si una tarea o archivo no existe, o existe pero es de otro usuario, la respuesta es `404`.
@@ -50,7 +49,7 @@ Si una tarea o archivo no existe, o existe pero es de otro usuario, la respuesta
 
 ### POST `/api/auth/register`
 
-Acepta `multipart/form-data` (con foto) o JSON.
+JSON. La foto de perfil se sube antes con la función serverless de imágenes y aquí solo se manda su URL.
 
 | Campo | Tipo | Obligatorio |
 |---|---|---|
@@ -58,8 +57,7 @@ Acepta `multipart/form-data` (con foto) o JSON.
 | `email` | texto | Sí |
 | `password` | texto | Sí |
 | `confirmPassword` | texto, igual a `password` | Sí |
-| `profileImage` | archivo (solo en multipart) | Uno de los dos |
-| `profileImageUrl` | URL de una imagen ya subida | Uno de los dos |
+| `profileImageUrl` | URL http(s) de la imagen subida por Lambda / Function | No (el frontend debe pedirla) |
 
 `201`:
 
@@ -70,7 +68,7 @@ Acepta `multipart/form-data` (con foto) o JSON.
 }
 ```
 
-Errores: `400` si faltan campos o las contraseñas no coinciden. `409` si el usuario ya existe.
+Errores: `400` si faltan campos, las contraseñas no coinciden o `profileImageUrl` no es http(s). `409` si el usuario ya existe.
 
 ### POST `/api/auth/login`
 
@@ -100,14 +98,12 @@ Objeto tarea:
 Objeto archivo:
 
 ```json
-{ "id": 1, "name": "nota.txt", "type": "text", "url": "https://<bucket>.s3.us-east-1.amazonaws.com/files/1/ab12....txt", "createdAt": "2026-09-29T15:43:07" }
+{ "id": 1, "name": "nota.txt", "type": "text", "url": "https://<bucket>.s3.us-east-1.amazonaws.com/texts/ab12....txt", "createdAt": "2026-09-29T15:43:07" }
 ```
 
 `type` vale `image`, `text` u `other`.
 
-**Modo A: subida por el backend** (`multipart/form-data`, campo `file`). El servidor sube el archivo con el SDK a S3 (en la EC2) o a Blob (en la VM de Azure). Responde `201` con el archivo.
-
-**Modo B: registro de un archivo subido por serverless** (JSON). El frontend sube el archivo con Lambda/API Gateway o con Functions/APIM, recibe la URL y la registra:
+**Registro de un archivo subido por serverless** (JSON). El frontend sube el archivo con Lambda/API Gateway o con Functions/APIM, recibe la URL y la registra:
 
 ```json
 { "name": "foto.png", "type": "image", "url": "https://..." }
@@ -121,12 +117,10 @@ Responde `201` con el archivo. Da `400` si faltan `name` o `url`, si `url` no es
 
 | Contenido | Key | Quién la sube |
 |---|---|---|
-| Foto de perfil | `profiles/<uuid><ext>` | Backend |
-| Archivo del usuario | `files/<userId>/<uuid><ext>` | Backend |
-| Imagen vía serverless | `images/<uuid><ext>` | Lambda / Function de imágenes |
-| Texto vía serverless | `texts/<uuid><ext>` | Lambda / Function de texto |
+| Imagen (incluida la foto de perfil) | `images/<uuid><ext>` | Lambda / Function de imágenes |
+| Texto | `texts/<uuid><ext>` | Lambda / Function de texto |
 
-Respuesta sugerida de las funciones serverless (Persona 4): `{ "url": "https://...", "name": "foto.png", "type": "image" }`. Con eso el frontend llama al Modo B sin transformar nada.
+Respuesta sugerida de las funciones serverless (Persona 4): `{ "url": "https://...", "name": "foto.png", "type": "image" }`. Con eso el frontend llama a `POST /api/files` sin transformar nada.
 
 ## 4. Base de datos (Amazon RDS PostgreSQL + stored procedures)
 
@@ -161,13 +155,12 @@ Los SP devuelven `created_at` ya formateado en ISO 8601 (UTC). Los backends solo
 | `DB_SSL` | `true` (RDS PostgreSQL exige SSL) | `true` |
 | `JWT_SECRET` / `JWT_HOURS` | Valor compartido / `8` | Igual |
 | `PORT` | `5000` | `5000` |
-| `STORAGE_PROVIDER` | `aws` | `azure` |
-| `S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Bucket de archivos y llaves del usuario IAM `g6-backend-s3` | Vacías |
-| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER` | Vacías | Cuenta de almacenamiento y contenedor de archivos |
+
+Los backends no tienen credenciales de S3 ni de Blob (en el diagrama las EC2 / VM solo hablan con RDS).
 
 ## 6. Pendientes por integrante
 
-**Persona 2 (backends/python).** El backend ya usa los SP y soporta `STORAGE_PROVIDER=aws|azure` y el Modo B de archivos. Solo falta desplegarlo con los mismos valores de `.env`.
+**Persona 2 (backends/python).** El backend ya usa los SP y el registro de archivos subidos por serverless. Solo falta desplegarlo con los mismos valores de `.env`.
 
 **Persona 3 (frontend + RDS).** Crear RDS **PostgreSQL**, crear la base `taskflow` y ejecutar `database/init.sql`. Configurar el frontend con dos URLs base: el ELB en el build de S3 y el Azure LB en el build de Blob.
 

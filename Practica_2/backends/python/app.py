@@ -24,10 +24,6 @@ def create_app():
     app.register_blueprint(files_bp)
 
     # Manejo global de errores
-    @app.errorhandler(413)
-    def too_large(_):
-        return err("Archivo demasiado grande (máx 10 MB)", 413)
-
     @app.errorhandler(404)
     def not_found(_):
         return err("Endpoint no encontrado", 404)

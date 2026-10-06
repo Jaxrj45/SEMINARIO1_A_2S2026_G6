@@ -171,11 +171,6 @@ Persona 2 usa este mismo `sg-backend-g6` para la EC2 de Python.
    DB_PASSWORD=<clave de RDS>
    DB_SSL=true
    JWT_SECRET=<el valor compartido>
-   STORAGE_PROVIDER=aws
-   S3_BUCKET=<bucket de archivos>
-   AWS_REGION=us-east-1
-   AWS_ACCESS_KEY_ID=<de g6-backend-s3>
-   AWS_SECRET_ACCESS_KEY=<de g6-backend-s3>
    PORT=5000
    ```
 
@@ -266,15 +261,7 @@ Usa el **mismo grupo de recursos, región y VNet** que la VM de Python de Person
 ### 5.2 Instalar y levantar el backend con PM2
 
 1. En la VM → **Connect** → **SSH**. También sirve **Cloud Shell** (icono `>_` arriba en el portal): subir ahí la llave con *Manage files → Upload* y ejecutar `ssh -i vm-node-g6-key.pem azureuser@<IP-publica>`.
-2. Los mismos comandos del paso 2.3 (Node.js, PM2, `git clone`, `npm ci`, `npm run build`, `.env`, `pm2 start`, `pm2 save`, `pm2 startup`). En el `.env` de Azure cambian estas líneas:
-
-   ```
-   STORAGE_PROVIDER=azure
-   AZURE_STORAGE_CONNECTION_STRING=<Storage account → Security + networking → Access keys → Connection string>
-   AZURE_STORAGE_CONTAINER=<contenedor de archivos creado por Persona 3>
-   ```
-
-   Las líneas de S3 pueden quedar vacías.
+2. Los mismos comandos del paso 2.3 (Node.js, PM2, `git clone`, `npm ci`, `npm run build`, `.env`, `pm2 start`, `pm2 save`, `pm2 startup`). El `.env` es idéntico al de la EC2: el backend no toca Blob, eso lo hacen las Azure Functions.
 
 3. `curl http://127.0.0.1:5000/health` debe responder `{"status":"ok","server":"node"}`.
 4. Con `persona1-derek`, agregar en el security group de la RDS la regla **PostgreSQL 5432** con origen `<IP-publica-de-la-VM>/32`. La RDS tiene que estar en *Publicly accessible: Yes* (lo configura Persona 3).

@@ -13,9 +13,7 @@ node/
 ├── src/
 │   ├── server.ts             # Express, rutas, manejo de errores
 │   ├── config/db.ts          # Pool de PostgreSQL y callSp()
-│   ├── config/storage.ts     # Subida a S3 (SDK de AWS v3) o a Azure Blob
 │   ├── middleware/auth.ts    # JWT HS256 compatible con PyJWT
-│   ├── middleware/upload.ts  # Multer en memoria (máx. 10 MB)
 │   ├── routes/               # auth, tasks, files
 │   └── utils/                # serialización y errores
 ├── dist/                     # JavaScript compilado (npm run build, no se sube a GitHub)
@@ -48,9 +46,6 @@ El backend no escribe SQL: toda la lógica de datos está en los stored procedur
 | pg | Conexión a Amazon RDS PostgreSQL y llamada a los SP |
 | pgcrypto (en la BD) | Contraseñas con bcrypt, encriptadas dentro del SP |
 | jsonwebtoken | Autenticación sin estado (HS256), válida en cualquier servidor |
-| @aws-sdk/client-s3 | Subida al bucket S3 de archivos (en la EC2) |
-| @azure/storage-blob | Subida al contenedor de Blob (en la VM de Azure) |
-| multer | Recepción de archivos en memoria (máx. 10 MB) |
 | PM2 | Mantiene el proceso vivo y lo levanta al reiniciar el servidor |
 
 ## Scripts
@@ -89,7 +84,7 @@ Resumen. El paso a paso completo desde la consola web está en [docs/persona1-de
 cd Practica_2/backends/node
 npm ci
 npm run build
-cp .env.example .env && nano .env    # STORAGE_PROVIDER=aws en EC2, azure en la VM
+cp .env.example .env && nano .env    # mismos valores en EC2 y en la VM
 sudo npm install -g pm2
 pm2 start ecosystem.config.cjs
 pm2 save
@@ -104,8 +99,5 @@ pm2 startup                           # ejecutar el comando sudo que imprime
 | `DB_SSL` | `true` | `true` |
 | `JWT_SECRET`, `JWT_HOURS` | Valor compartido con Python, `8` | Igual |
 | `PORT` | `5000` | `5000` |
-| `STORAGE_PROVIDER` | `aws` | `azure` |
-| `S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Bucket de archivos y llaves del usuario IAM de la app | Vacías |
-| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER` | Vacías | Cuenta de almacenamiento y contenedor |
 
-Si el bucket o el contenedor están vacíos, las URLs se simulan (`http://simulated-bucket/...`). Sirve para probar sin nube.
+El backend no necesita credenciales de S3 ni de Blob: los archivos (incluida la foto de perfil) los suben Lambda / Azure Functions y el backend solo guarda la URL en RDS.

@@ -14,7 +14,6 @@ python/
 ├── db.py             # Pool de conexiones a RDS PostgreSQL y call_sp()
 ├── extensions.py     # Instancias compartidas (CORS)
 ├── routes/           # Endpoints agrupados por módulo (health, auth, tasks, files)
-├── services/         # Subida de archivos a S3 (boto3) o Azure Blob
 ├── utils/            # JWT, serialización de respuestas y helpers
 ├── test_api.py       # Prueba de humo del contrato de la API
 ├── requirements.txt  # Dependencias
@@ -32,8 +31,6 @@ El backend no escribe SQL: toda la lógica de datos está en los stored procedur
 | psycopg2 | Conexión a Amazon RDS PostgreSQL y llamada a los stored procedures |
 | pgcrypto (en la BD) | Contraseñas con bcrypt, encriptadas dentro del SP (nunca en texto plano) |
 | PyJWT (HS256) | Autenticación sin estado, válida en cualquier servidor |
-| boto3 | SDK de AWS para subir archivos al bucket S3 (en la EC2) |
-| azure-storage-blob | Subida al contenedor de Blob Storage (en la VM de Azure) |
 | gunicorn | Servidor de producción en la VM / EC2 |
 
 ## Instalación y ejecución local
@@ -63,11 +60,8 @@ Son las mismas que en `backends/node/.env.example`.
 | `JWT_SECRET` | Secreto de firma. **Debe ser idéntico en Node y Python** | *(valor compartido, no subir a GitHub)* |
 | `JWT_HOURS` | Horas de validez del token | `8` |
 | `PORT` | Puerto del servidor, **5000 en todos** | `5000` |
-| `STORAGE_PROVIDER` | `aws` en la EC2, `azure` en la VM de Azure | `aws` |
-| `S3_BUCKET`, `AWS_REGION` | Bucket público de archivos. Vacío = modo simulación | `practica2semi1...archivosg6` |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Llaves del usuario IAM de la app (solo S3) | *(no subir a GitHub)* |
-| `AZURE_STORAGE_CONNECTION_STRING` | Cadena de conexión de la cuenta de almacenamiento. Vacío = simulación | *(no subir a GitHub)* |
-| `AZURE_STORAGE_CONTAINER` | Contenedor de archivos | `practica2semi1...archivosg6` |
+
+El backend no necesita credenciales de S3 ni de Blob: los archivos los suben Lambda / Azure Functions y el backend solo guarda la URL.
 
 ## Contrato de la API
 
@@ -84,7 +78,7 @@ La referencia completa, con request/response de cada endpoint, está en [docs/co
 | PATCH | `/api/tasks/:id/complete` | Sí | Marca/desmarca como completada |
 | DELETE | `/api/tasks/:id` | Sí | Elimina una tarea |
 | GET | `/api/files` | Sí | Lista los archivos del usuario |
-| POST | `/api/files` | Sí | Sube un archivo (multipart `file`) o registra uno subido por serverless (JSON `{name, type, url}`) |
+| POST | `/api/files` | Sí | Registra un archivo subido por serverless (JSON `{name, type, url}`) |
 | GET | `/api/files/:id` | Sí | Metadatos y URL pública del archivo |
 
 ## Decisiones de seguridad y alta disponibilidad
@@ -103,7 +97,7 @@ BASE_URL=http://<host>:<puerto> python test_api.py   # contra VM, Load Balancer 
 # PowerShell: $env:BASE_URL="http://<host>:<puerto>"; python test_api.py
 ```
 
-Verifica health, registro (incluye duplicado y contraseñas distintas), login, CRUD de tareas, subida y listado de archivos. Resultado esperado: `RESULTADO: TODO OK`.
+Verifica health, registro (incluye duplicado y contraseñas distintas), login, CRUD de tareas, registro y listado de archivos. Resultado esperado: `RESULTADO: TODO OK`.
 
 ## Estado por fase (Persona 2)
 

@@ -2,7 +2,7 @@
 Uso: BASE_URL=http://host:puerto python test_api.py
 """
 
-import os, io, uuid, sys, requests
+import os, uuid, sys, requests
 
 BASE = os.getenv("BASE_URL", "http://127.0.0.1:5000").rstrip("/")
 u = "user_" + uuid.uuid4().hex[:8]
@@ -23,18 +23,15 @@ body = {
     "email": f"{u}@mail.com",
     "password": "Clave123",
     "confirmPassword": "Clave123",
+    "profileImageUrl": "https://example.com/profiles/p.png",
 }
-r = requests.post(
-    f"{BASE}/api/auth/register",
-    data=body,
-    files={"profileImage": ("p.png", b"\x89PNG fake", "image/png")},
-)
+r = requests.post(f"{BASE}/api/auth/register", json=body)
 check("POST /api/auth/register", r.status_code == 201, r.text.strip())
-r = requests.post(f"{BASE}/api/auth/register", data=body)
+r = requests.post(f"{BASE}/api/auth/register", json=body)
 check("Registro duplicado -> 409", r.status_code == 409)
 r = requests.post(
     f"{BASE}/api/auth/register",
-    data={**body, "username": u + "x", "confirmPassword": "otra"},
+    json={**body, "username": u + "x", "confirmPassword": "otra"},
 )
 check("Contraseñas distintas -> 400", r.status_code == 400)
 
@@ -71,7 +68,7 @@ check("Borrar inexistente -> 404", r.status_code == 404)
 r = requests.post(
     f"{BASE}/api/files",
     headers=H,
-    files={"file": ("nota.txt", io.BytesIO(b"hola"), "text/plain")},
+    json={"name": "nota.txt", "type": "text", "url": "https://example.com/texts/nota.txt"},
 )
 check(
     "POST /api/files (texto)",
@@ -82,9 +79,15 @@ fid = r.json()["id"]
 r = requests.post(
     f"{BASE}/api/files",
     headers=H,
-    files={"file": ("foto.png", io.BytesIO(b"png"), "image/png")},
+    json={"name": "foto.png", "type": "image", "url": "https://example.com/images/foto.png"},
 )
 check("POST /api/files (imagen)", r.status_code == 201 and r.json()["type"] == "image")
+r = requests.post(
+    f"{BASE}/api/files", headers=H, json={"name": "x", "type": "otro", "url": "https://e.com/x"}
+)
+check("Tipo inválido -> 400", r.status_code == 400)
+r = requests.post(f"{BASE}/api/files", headers=H, json={"name": "x", "url": "ftp://e.com/x"})
+check("URL no http(s) -> 400", r.status_code == 400)
 r = requests.get(f"{BASE}/api/files", headers=H)
 check("GET /api/files", r.status_code == 200 and len(r.json()) == 2)
 r = requests.get(f"{BASE}/api/files/{fid}", headers=H)

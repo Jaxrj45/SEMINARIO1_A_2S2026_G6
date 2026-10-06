@@ -1,0 +1,11 @@
+{
+  "name": "g6-azure-functions",
+  "version": "1.0.0",
+  "description": "Funciones serverless de TaskFlow + CloudDrive (subida de imagenes y texto a Blob Storage)",
+  "main": "src/functions/*.js",
+  "scripts": { "start": "func start" },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "@azure/storage-blob": "^12.17.0"
+  }
+}

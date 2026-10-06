@@ -20,3 +20,7 @@ Universidad de San Carlos de Guatemala · Segundo Semestre 2026
 |   2   | Derek Francisco Orellana Ibáñez  | 202001151 |
 |   3   | Miguel Angel Kanek Balan Velasco | 202300765 |
 |   4   | José Adrian Orozco Ramírez       | 202210908 |
+
+## Documentación
+
+- [Funciones Serverless (AWS Lambda y Azure Functions)](serverless/README.md)

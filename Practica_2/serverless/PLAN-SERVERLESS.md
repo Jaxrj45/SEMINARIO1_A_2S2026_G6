@@ -77,8 +77,8 @@ Mientras esperas lo que está pendiente, avanza en lo que no depende de nadie.
 ### Para Miguel (antes de que compile el frontend)
 Las 4 URLs, en este formato:
 ```
-AWS    imagen:  https://<id>.execute-api.us-east-1.amazonaws.com/imagenes
-AWS    texto:   https://<id>.execute-api.us-east-1.amazonaws.com/textos
+AWS    imagen:  https://v6vbfsjqyb.execute-api.us-east-1.amazonaws.com/imagenes
+AWS    texto:   https://v6vbfsjqyb.execute-api.us-east-1.amazonaws.com/textos
 Azure  imagen:  https://<apim>.azure-api.net/serverless/imagenes
 Azure  texto:   https://<apim>.azure-api.net/serverless/textos
 Body:  POST JSON { name, contentType, data (base64) }

@@ -1,111 +1,220 @@
-# Backend Python - TaskFlow + CloudDrive
+[ ← Regresar ](../../README.md)
 
-Backend en **Flask** de la Práctica 2 (Seminario 1). Expone exactamente los mismos endpoints que el backend Node.js, de modo que el balanceador de carga (AWS ELB / Azure Load Balancer) pueda enviar cualquier petición a cualquiera de los dos servidores.
+# Despliegue del backend Python
 
-- **Responsable:** Persona 2
-- **Estado:** Fase 1 completada (código + pruebas locales contra PostgreSQL `17/17 OK`)
+Backend en **Flask**. Se ejecuta con **gunicorn** como servicio de **systemd** en una instancia **EC2** (AWS) y en una **VM** (Azure). Contrato de la API: [docs/contrato-api.md](../../docs/contrato-api.md).
 
-## Estructura del proyecto
+## Índice
 
-```
-python/
-├── app.py            # Punto de entrada: crea la app Flask y registra las rutas
-├── config.py         # Carga de variables de entorno
-├── db.py             # Pool de conexiones a RDS PostgreSQL y call_sp()
-├── extensions.py     # Instancias compartidas (CORS)
-├── routes/           # Endpoints agrupados por módulo (health, auth, tasks, files)
-├── utils/            # JWT, serialización de respuestas y helpers
-├── test_api.py       # Prueba de humo del contrato de la API
-├── requirements.txt  # Dependencias
-├── .env.example      # Plantilla de variables (el .env real NO se sube a GitHub)
-└── .gitignore
-```
+1. [Requisitos](#1-requisitos)
+2. [Infraestructura en AWS (EC2)](#2-infraestructura-en-aws-ec2)
+3. [Infraestructura en Azure (VM)](#3-infraestructura-en-azure-vm)
+4. [Instalación en el servidor](#4-instalación-en-el-servidor)
+5. [Variables de entorno](#5-variables-de-entorno)
+6. [Servicio de systemd](#6-servicio-de-systemd)
+7. [Comandos de operación](#7-comandos-de-operación)
+8. [Actualizar después de un cambio](#8-actualizar-después-de-un-cambio)
+9. [Verificación](#9-verificación)
 
-El backend no escribe SQL: toda la lógica de datos está en los stored procedures de [`database/`](../../database/). Cada ruta llama a uno con `call_sp("sp_nombre", ...)`.
+## 1. Requisitos
 
-## Tecnologías
-
-| Componente | Uso |
+| Requisito | Valor |
 |---|---|
-| Flask + Flask-CORS | API REST y CORS para el frontend estático |
-| psycopg2 | Conexión a Amazon RDS PostgreSQL y llamada a los stored procedures |
-| pgcrypto (en la BD) | Contraseñas con bcrypt, encriptadas dentro del SP (nunca en texto plano) |
-| PyJWT (HS256) | Autenticación sin estado, válida en cualquier servidor |
-| gunicorn | Servidor de producción en la VM / EC2 |
+| Sistema operativo | Ubuntu Server 24.04 LTS |
+| Python | 3.12 (incluido en Ubuntu 24.04) |
+| Servidor WSGI | gunicorn |
+| Puerto | `5000` |
+| Health check | `GET /health` |
+| Base de datos | Amazon RDS PostgreSQL con los scripts de [`database/`](../../database/) ejecutados |
 
-## Instalación y ejecución local
+## 2. Infraestructura en AWS (EC2)
 
-Requiere un PostgreSQL con los scripts de `database/` ya ejecutados.
+Región: **us-east-1**.
+
+### 2.1 Security groups
+
+Se usa el mismo `sg-backend-g6` de la EC2 de Node:
+
+| Security group | Tipo | Puerto | Origen |
+|---|---|---|---|
+| `sg-backend-g6` | Custom TCP | 5000 | `sg-elb-g6` |
+| `sg-backend-g6` | SSH | 22 | My IP |
+
+### 2.2 Instancia
+
+| Campo | Valor |
+|---|---|
+| Nombre | `<nombre-ec2-python>` |
+| AMI | Ubuntu Server 24.04 LTS |
+| Tipo | `t2.micro` / `t3.micro` |
+| Subnet | us-east-1b |
+| IP pública | Habilitada |
+| Security group | `sg-backend-g6` |
+
+Conexión: **EC2** → instancia → **Connect** → **EC2 Instance Connect**, o por SSH:
 
 ```bash
-cd Practica_2/backends/python
+ssh -i <llave>.pem ubuntu@<IP-publica>
+```
+
+### 2.3 Load Balancer
+
+La instancia se registra en el target group `tg-backends-g6` (HTTP `5000`, health check `/health`) del load balancer `elb-g6`.
+
+## 3. Infraestructura en Azure (VM)
+
+La VM va en el **mismo grupo de recursos, región y VNet** que la VM de Node, porque el Azure Load Balancer Standard solo acepta VMs de una misma VNet.
+
+### 3.1 VM
+
+| Campo | Valor |
+|---|---|
+| Nombre | `<nombre-vm-python>` |
+| Imagen | Ubuntu Server 24.04 LTS |
+| Tamaño | `Standard_B1s` |
+| Autenticación | SSH public key, usuario `azureuser` |
+| IP pública | Nueva, SKU Standard |
+| NSG | `<nombre-nsg-python>` |
+
+### 3.2 Reglas de entrada del NSG
+
+| Prioridad | Nombre | Puerto | Protocolo | Origen |
+|---|---|---|---|---|
+| 100 | `Allow-API-5000` | 5000 | TCP | Any |
+| 110 | `Allow-SSH` | 22 | TCP | My IP address |
+
+En el security group de la RDS se agrega la regla **PostgreSQL 5432** con origen `<IP-publica-de-la-VM>/32`.
+
+Conexión:
+
+```bash
+ssh -i <llave>.pem azureuser@<IP-publica>
+```
+
+### 3.3 Load Balancer
+
+La VM se agrega al backend pool del Azure Load Balancer, con regla al puerto `5000` y health probe HTTP en `/health`.
+
+## 4. Instalación en el servidor
+
+Los pasos son los mismos en la EC2 y en la VM.
+
+```bash
+# Python, venv y git
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip git
+
+# Código (repositorio privado: usar un fine-grained token con Contents: Read-only)
+git clone -b <rama> https://<TOKEN>@github.com/Jaxrj45/SEMINARIO1_A_2S2026_G6.git
+cd SEMINARIO1_A_2S2026_G6/Practica_2/backends/python
+
+# Entorno virtual y dependencias
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
+```
+
+## 5. Variables de entorno
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+| Variable | Valor |
+|---|---|
+| `DB_HOST` | Endpoint de RDS |
+| `DB_PORT` | `5432` |
+| `DB_NAME` | `taskflow` |
+| `DB_USER`, `DB_PASSWORD` | Credenciales de RDS |
+| `DB_SSL` | `true` |
+| `JWT_SECRET` | Mismo valor en los 4 servidores |
+| `JWT_HOURS` | `8` |
+| `PORT` | `5000` |
+
+El `.env` es el mismo en la EC2 y en la VM. No se sube a GitHub.
+
+## 6. Servicio de systemd
+
+Crear el servicio:
+
+```bash
+sudo nano /etc/systemd/system/taskflow-python.service
+```
+
+Contenido (`<usuario>` es `ubuntu` en la EC2 y `azureuser` en la VM):
+
+```ini
+[Unit]
+Description=TaskFlow backend Python (gunicorn)
+After=network.target
+
+[Service]
+User=<usuario>
+WorkingDirectory=/home/<usuario>/SEMINARIO1_A_2S2026_G6/Practica_2/backends/python
+ExecStart=/home/<usuario>/SEMINARIO1_A_2S2026_G6/Practica_2/backends/python/venv/bin/gunicorn -w 2 -b 0.0.0.0:5000 app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Activar e iniciar:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now taskflow-python
+```
+
+Con `enable` el backend se levanta solo al reiniciar la instancia.
+
+## 7. Comandos de operación
+
+| Acción | Comando |
+|---|---|
+| Ver estado | `sudo systemctl status taskflow-python` |
+| Ver logs en vivo | `sudo journalctl -u taskflow-python -f` |
+| Últimas 100 líneas de log | `sudo journalctl -u taskflow-python -n 100` |
+| Detener | `sudo systemctl stop taskflow-python` |
+| Iniciar | `sudo systemctl start taskflow-python` |
+| Reiniciar | `sudo systemctl restart taskflow-python` |
+| Quitar el arranque automático | `sudo systemctl disable taskflow-python` |
+| Recargar después de editar el `.service` | `sudo systemctl daemon-reload && sudo systemctl restart taskflow-python` |
+
+## 8. Actualizar después de un cambio
+
+```bash
+cd ~/SEMINARIO1_A_2S2026_G6/Practica_2/backends/python
+git pull
+venv/bin/pip install -r requirements.txt
+sudo systemctl restart taskflow-python
+```
+
+Si solo cambió el `.env`:
+
+```bash
+sudo systemctl restart taskflow-python
+```
+
+## 9. Verificación
+
+```bash
+curl http://127.0.0.1:5000/health          # {"status":"ok","server":"python"}
+curl http://<DNS-del-ELB>/health           # AWS
+curl http://<IP-del-Azure-LB>:<puerto>/health   # Azure
+```
+
+Prueba del contrato completo:
+
+```bash
+BASE_URL=http://127.0.0.1:5000 venv/bin/python test_api.py
+```
+
+### Ejecución local
+
+```bash
 python -m venv venv
 venv\Scripts\activate          # Linux/Mac: source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env           # Windows: copy .env.example .env
-python app.py                  # http://127.0.0.1:5000
+cp .env.example .env           # DB_SSL=false con PostgreSQL local
+python app.py                  # http://127.0.0.1:5000/health
 ```
-
-En producción: `gunicorn -w 2 -b 0.0.0.0:5000 app:app`.
-
-## Variables de entorno
-
-Son las mismas que en `backends/node/.env.example`.
-
-| Variable | Descripción | Ejemplo |
-|---|---|---|
-| `DB_HOST`, `DB_PORT`, `DB_NAME` | Endpoint de RDS PostgreSQL | `xxx.rds.amazonaws.com`, `5432`, `taskflow` |
-| `DB_USER`, `DB_PASSWORD` | Credenciales de la base | *(no subir a GitHub)* |
-| `DB_SSL` | `true` en RDS (exige SSL) | `true` |
-| `JWT_SECRET` | Secreto de firma. **Debe ser idéntico en Node y Python** | *(valor compartido, no subir a GitHub)* |
-| `JWT_HOURS` | Horas de validez del token | `8` |
-| `PORT` | Puerto del servidor, **5000 en todos** | `5000` |
-
-El backend no necesita credenciales de S3 ni de Blob: los archivos los suben Lambda / Azure Functions y el backend solo guarda la URL.
-
-## Contrato de la API
-
-La referencia completa, con request/response de cada endpoint, está en [docs/contrato-api.md](../../docs/contrato-api.md).
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| GET | `/health` | No | Health probe del balanceador |
-| POST | `/api/auth/register` | No | Registro de usuario |
-| POST | `/api/auth/login` | No | Inicio de sesión |
-| GET | `/api/tasks` | Sí | Lista las tareas del usuario |
-| POST | `/api/tasks` | Sí | Crea una tarea |
-| PUT | `/api/tasks/:id` | Sí | Edita título y descripción |
-| PATCH | `/api/tasks/:id/complete` | Sí | Marca/desmarca como completada |
-| DELETE | `/api/tasks/:id` | Sí | Elimina una tarea |
-| GET | `/api/files` | Sí | Lista los archivos del usuario |
-| POST | `/api/files` | Sí | Registra un archivo subido por serverless (JSON `{name, type, url}`) |
-| GET | `/api/files/:id` | Sí | Metadatos y URL pública del archivo |
-
-## Decisiones de seguridad y alta disponibilidad
-
-- **Contraseñas:** bcrypt con `pgcrypto` dentro de `sp_registrar_usuario`. `sp_login` verifica sin que el hash salga de la base.
-- **Autenticación sin estado:** no hay sesiones en memoria. Un usuario puede iniciar sesión en un servidor y ser atendido por el otro.
-- **Aislamiento por usuario:** todos los SP filtran por el `user_id` del token.
-- **Imágenes:** nunca se guardan en la base de datos, solo la URL del objeto en S3/Blob.
-- **Secretos:** `.env` y credenciales están en `.gitignore`.
-
-## Pruebas
-
-```bash
-python test_api.py                                   # contra local (http://127.0.0.1:5000)
-BASE_URL=http://<host>:<puerto> python test_api.py   # contra VM, Load Balancer o EC2
-# PowerShell: $env:BASE_URL="http://<host>:<puerto>"; python test_api.py
-```
-
-Verifica health, registro (incluye duplicado y contraseñas distintas), login, CRUD de tareas, registro y listado de archivos. Resultado esperado: `RESULTADO: TODO OK`.
-
-## Estado por fase (Persona 2)
-
-| Fase | Descripción | Estado |
-|---|---|---|
-| 1 | Backend Python + contrato de API | Completada (local, PostgreSQL + SP) |
-| 2 | Grupo de recursos, VNet, Entra ID y RBAC en Azure | Pendiente |
-| 3 | Despliegue en VM de Azure + conexión a RDS | Pendiente |
-| 4 | Azure Load Balancer + prueba de failover | Pendiente |
-| 5 | EC2 Python en AWS con IAM y Security Group mínimo | Pendiente |
-| 6 | Documentación con capturas | Pendiente |

@@ -1,6 +1,5 @@
 -- Elimina una tarea del usuario. deleted = FALSE si no existia o era de otro usuario (-> 404).
-DROP FUNCTION IF EXISTS sp_eliminar_tarea(INT, INT);
-CREATE FUNCTION sp_eliminar_tarea(p_id INT, p_user_id INT)
+CREATE OR REPLACE FUNCTION sp_eliminar_tarea(p_id INT, p_user_id INT)
 RETURNS TABLE (deleted BOOLEAN)
 LANGUAGE sql AS $$
   WITH d AS (

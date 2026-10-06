@@ -1,6 +1,5 @@
 -- Tareas del usuario, mas recientes primero. created_at en ISO 8601 (UTC).
-DROP FUNCTION IF EXISTS sp_listar_tareas(INT);
-CREATE FUNCTION sp_listar_tareas(p_user_id INT)
+CREATE OR REPLACE FUNCTION sp_listar_tareas(p_user_id INT)
 RETURNS TABLE (id INT, title VARCHAR, description TEXT, completed BOOLEAN, created_at TEXT)
 LANGUAGE sql AS $$
   SELECT t.id, t.title, t.description, t.completed,

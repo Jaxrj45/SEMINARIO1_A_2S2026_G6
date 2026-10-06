@@ -1,6 +1,5 @@
 -- Marca o desmarca como completada. p_completed NULL -> alterna el estado actual.
-DROP FUNCTION IF EXISTS sp_marcar_tarea(INT, INT, BOOLEAN);
-CREATE FUNCTION sp_marcar_tarea(p_id INT, p_user_id INT, p_completed BOOLEAN)
+CREATE OR REPLACE FUNCTION sp_marcar_tarea(p_id INT, p_user_id INT, p_completed BOOLEAN)
 RETURNS TABLE (id INT, title VARCHAR, description TEXT, completed BOOLEAN, created_at TEXT)
 LANGUAGE sql AS $$
   UPDATE tasks AS t

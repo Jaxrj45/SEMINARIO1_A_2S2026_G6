@@ -145,6 +145,10 @@ Equivalente a los usuarios IAM: un usuario por servicio, con permisos limitados 
 
 #### IAM
 
+Sesión del usuario IAM `jax` en la cuenta del grupo:
+
+![Usuario IAM](docs/img/aws-iam-usuario.png)
+
 > **Pendiente:** lista de usuarios, política `G6-S3-Archivos` y rol `g6-lambda-role` (Derek).
 
 #### S3
@@ -160,6 +164,16 @@ Bucket de archivos con acceso público de lectura:
 ![EC2 Python](docs/img/aws-ec2-python.png)
 
 ![Security Group de la EC2 Python](docs/img/aws-sg-ec2-python.png)
+
+El backend corre como servicio del sistema (systemd) y se reinicia solo:
+
+![Servicio del backend en la EC2](docs/img/aws-ec2-systemd.png)
+
+![Reinicio de la EC2 sin reinicios del servicio](docs/img/aws-ec2-reinicio.png)
+
+Pruebas de la API (`test_api.py`) contra la EC2:
+
+![test_api contra la EC2](docs/img/aws-ec2-test-api.png)
 
 > **Pendiente:** EC2 Node (Derek).
 
@@ -195,11 +209,23 @@ Bucket de archivos con acceso público de lectura:
 
 ![Grupo de recursos](docs/img/azure-resource-group.png)
 
+![Red virtual](docs/img/azure-vnet.png)
+
+![Subred](docs/img/azure-subredes.png)
+
 ![Reglas del NSG](docs/img/azure-nsg-reglas.png)
 
 ![VM Python en ejecución](docs/img/azure-vm-python.png)
 
+![Servicio del backend (systemd)](docs/img/azure-vm-systemd.png)
+
 ![Servicio del backend activo y /health](docs/img/azure-vm-health.png)
+
+Pruebas de la API (`test_api.py`) contra la VM:
+
+![test_api contra la VM](docs/img/azure-vm-test-api.png)
+
+![test_api contra la VM, segunda ejecución](docs/img/azure-vm-test-api-2.png)
 
 > **Pendiente:** `vm-node-g6` en ejecución.
 

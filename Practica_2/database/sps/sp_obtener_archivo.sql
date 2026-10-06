@@ -1,6 +1,5 @@
 -- Un archivo, solo si pertenece al usuario (si no, cero filas -> 404).
-DROP FUNCTION IF EXISTS sp_obtener_archivo(INT, INT);
-CREATE FUNCTION sp_obtener_archivo(p_id INT, p_user_id INT)
+CREATE OR REPLACE FUNCTION sp_obtener_archivo(p_id INT, p_user_id INT)
 RETURNS TABLE (id INT, name VARCHAR, type VARCHAR, url VARCHAR, created_at TEXT)
 LANGUAGE sql AS $$
   SELECT f.id, f.name, f.type, f.url,

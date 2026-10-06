@@ -23,5 +23,8 @@ Universidad de San Carlos de Guatemala · Segundo Semestre 2026
 
 ## Indice
 
-- [Practica 1](./Practica_1/README.md)
-- [Practica 2](./Practica_2/README.md)
+- Practicas
+  - [Practica 1](./Practica_1/README.md)
+  - [Practica 2](./Practica_2/README.md)
+- Proyectos
+  - [Proyecto](./Proyecto/README.md)

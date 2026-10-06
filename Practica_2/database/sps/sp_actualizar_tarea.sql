@@ -1,8 +1,7 @@
 -- Edita titulo y/o descripcion de una tarea del usuario.
 --   p_title NULL            -> conserva el titulo
 --   p_set_description FALSE -> conserva la descripcion (TRUE permite guardar NULL a proposito)
-DROP FUNCTION IF EXISTS sp_actualizar_tarea(INT, INT, VARCHAR, TEXT, BOOLEAN);
-CREATE FUNCTION sp_actualizar_tarea(
+CREATE OR REPLACE FUNCTION sp_actualizar_tarea(
   p_id              INT,
   p_user_id         INT,
   p_title           VARCHAR,

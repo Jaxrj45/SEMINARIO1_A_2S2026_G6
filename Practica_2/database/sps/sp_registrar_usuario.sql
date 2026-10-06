@@ -1,7 +1,6 @@
 -- Registra un usuario. La contrasena llega en texto y se guarda con bcrypt (pgcrypto).
 -- Si el username ya existe lanza unique_violation (23505) -> el backend responde 409.
-DROP FUNCTION IF EXISTS sp_registrar_usuario(VARCHAR, VARCHAR, VARCHAR, VARCHAR);
-CREATE FUNCTION sp_registrar_usuario(
+CREATE OR REPLACE FUNCTION sp_registrar_usuario(
   p_username          VARCHAR,
   p_email             VARCHAR,
   p_password          VARCHAR,

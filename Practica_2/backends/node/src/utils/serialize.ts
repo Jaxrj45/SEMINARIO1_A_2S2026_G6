@@ -43,11 +43,3 @@ export const fileToDict = (row: FileRow) => ({
   url: row.url,
   createdAt: row.created_at,
 });
-
-// image | text | other, a partir del mimetype
-export function fileCategory(mimetype: string | undefined): string {
-  const m = mimetype || '';
-  if (m.startsWith('image/')) return 'image';
-  if (m.startsWith('text/')) return 'text';
-  return 'other';
-}

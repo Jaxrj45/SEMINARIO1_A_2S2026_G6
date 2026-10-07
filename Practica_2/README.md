@@ -23,13 +23,34 @@ Universidad de San Carlos de Guatemala · Segundo Semestre 2026
 
 ## Índice
 
-1. [Descripción de la arquitectura utilizada](#descripción-de-la-arquitectura-utilizada)
-2. [Descripción de los usuarios IAM y sus políticas](#descripción-de-los-usuarios-iam-y-sus-políticas)
-3. [Capturas de pantalla de todos los recursos AWS y Azure](#capturas-de-pantalla-de-todos-los-recursos-aws-y-azure)
-   - [AWS](#aws-1)
-   - [Azure](#azure-1)
-   - [Pruebas](#pruebas)
-4. [Conclusiones sobre las diferencias percibidas entre Azure y AWS](#conclusiones-sobre-las-diferencias-percibidas-entre-azure-y-aws)
+- [TaskFlow + CloudDrive - Practica 2](#taskflow--clouddrive---practica-2)
+  - [Integrantes](#integrantes)
+  - [Índice](#índice)
+  - [Descripción de la arquitectura utilizada](#descripción-de-la-arquitectura-utilizada)
+    - [AWS](#aws)
+    - [Azure](#azure)
+  - [Descripción de los usuarios IAM y sus políticas](#descripción-de-los-usuarios-iam-y-sus-políticas)
+    - [Usuarios](#usuarios)
+    - [Política `G6-App-S3-Archivos`](#política-g6-app-s3-archivos)
+    - [Rol `g6-lambda-role`](#rol-g6-lambda-role)
+    - [Azure: usuarios de Entra ID y roles RBAC](#azure-usuarios-de-entra-id-y-roles-rbac)
+  - [Capturas de pantalla de todos los recursos AWS y Azure](#capturas-de-pantalla-de-todos-los-recursos-aws-y-azure)
+    - [AWS](#aws-1)
+      - [IAM](#iam)
+      - [S3](#s3)
+      - [EC2](#ec2)
+      - [Load Balancer](#load-balancer)
+      - [RDS](#rds)
+      - [Lambda](#lambda)
+      - [API Gateway](#api-gateway)
+    - [Azure](#azure-1)
+      - [Azure VM](#azure-vm)
+      - [Azure Blob Storage](#azure-blob-storage)
+      - [Azure Load Balancer](#azure-load-balancer)
+      - [Azure Functions](#azure-functions)
+      - [Azure API Management](#azure-api-management)
+    - [Pruebas](#pruebas)
+  - [Conclusiones sobre las diferencias percibidas entre Azure y AWS](#conclusiones-sobre-las-diferencias-percibidas-entre-azure-y-aws)
 
 Documentación complementaria:
 
@@ -98,9 +119,9 @@ Hay dos backends con las mismas funciones (Node.js y Python) detrás de un balan
 | `jax` | Edwin Alexander Jax Lopez | `AmazonEC2FullAccess` | Consola |
 | `miguel` | Miguel Angel Kanek Balan Velasco | `AmazonS3FullAccess`, `AmazonRDSFullAccess`, `AmazonEC2FullAccess` | Consola |
 | `jose` | José Adrian Orozco Ramírez | `AWSLambda_FullAccess`, `AmazonAPIGatewayAdministrator`, `AmazonS3FullAccess` | Consola |
-| `g6-backend-s3` | Los backends de las EC2 | `G6-S3-Archivos` | Solo llaves de acceso |
+| `g6-backend-s3` | Los backends de las EC2 | `G6-App-S3-Archivos` | Solo llaves de acceso |
 
-### Política `G6-S3-Archivos`
+### Política `G6-App-S3-Archivos`
 
 ```json
 {
@@ -120,7 +141,7 @@ Hay dos backends con las mismas funciones (Node.js y Python) detrás de un balan
 | Política | Uso |
 |---|---|
 | `AWSLambdaBasicExecutionRole` | Logs en CloudWatch |
-| `G6-S3-Archivos` | Escritura y lectura en el bucket de archivos |
+| `G6-App-S3-Archivos` | Escritura y lectura en el bucket de archivos |
 
 Lo asumen las dos Lambdas al ejecutarse. Es distinto de un usuario IAM porque lo usa el servicio y no una persona.
 
@@ -145,11 +166,10 @@ Equivalente a los usuarios IAM: un usuario por servicio, con permisos limitados 
 
 #### IAM
 
-Sesión del usuario IAM `jax` en la cuenta del grupo:
-
+![Usuarios IAM](docs/img/derek/image.png)
 ![Usuario IAM](docs/img/aws-iam-usuario.png)
-
-> **Pendiente:** lista de usuarios, política `G6-S3-Archivos` y rol `g6-lambda-role` (Derek).
+![Política G6-App-S3-Archivos](docs/img/derek/image-1.png)
+![Rol G6-Lambda-Role](docs/img/derek/image-2.png)
 
 #### S3
 
@@ -175,11 +195,13 @@ Pruebas de la API (`test_api.py`) contra la EC2:
 
 ![test_api contra la EC2](docs/img/aws-ec2-test-api.png)
 
-> **Pendiente:** EC2 Node (Derek).
+![Node VM](docs/img/derek/image-3.png)
 
 #### Load Balancer
 
-> **Pendiente:** detalle del ELB, listener y target group con los 2 targets *healthy* (Derek).
+![Target Group](docs/img/derek/image-4.png)
+![ELB](docs/img/derek/image-5.png)
+![DNS de ELB](docs/img/derek/image-6.png)
 
 #### RDS
 
@@ -227,7 +249,7 @@ Pruebas de la API (`test_api.py`) contra la VM:
 
 ![test_api contra la VM, segunda ejecución](docs/img/azure-vm-test-api-2.png)
 
-> **Pendiente:** `vm-node-g6` en ejecución.
+![Node Azure en ejecucion](docs/img/derek/image-7.png)
 
 #### Azure Blob Storage
 

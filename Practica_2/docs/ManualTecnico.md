@@ -50,13 +50,6 @@ Universidad de San Carlos de Guatemala – Segundo Semestre 2026
     - [Pruebas](#pruebas)
   - [Conclusiones sobre las diferencias percibidas entre Azure y AWS](#conclusiones-sobre-las-diferencias-percibidas-entre-azure-y-aws)
 
-Documentación complementaria:
-
-- [Contrato de la API](docs/contrato-api.md)
-- [Despliegue del backend Node.js](../backends/node/README.md)
-- [Despliegue del backend Python](../backends/python/Readme.md)
-- [Funciones serverless (AWS Lambda y Azure Functions)](serverless/README.md)
-
 ---
 
 ## Descripción de la arquitectura utilizada

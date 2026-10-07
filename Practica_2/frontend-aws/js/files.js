@@ -1,12 +1,8 @@
-﻿// files.js
+// files.js
 document.addEventListener("DOMContentLoaded", () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-        window.location.href = "./login.html";
-        return;
-    }
+    if (!token) { window.location.href = "./login.html"; return; }
 
-    // Decodificar JWT para sacar el username
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         document.getElementById("navUsername").textContent = payload.username;
@@ -15,7 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("menuUserImage").src = `https://ui-avatars.com/api/?name=${payload.username}&background=2563eb&color=fff`;
     } catch (e) {}
 
-    // Logout
     document.getElementById("btnLogout").addEventListener("click", () => {
         localStorage.removeItem("token");
         window.location.href = "./login.html";
@@ -24,53 +19,35 @@ document.addEventListener("DOMContentLoaded", () => {
     const filesContainer = document.getElementById("filesContainer");
     const fileForm = document.getElementById("fileForm");
     
-    // Cargar Archivos
     async function fetchFiles() {
         try {
             const response = await fetch(`${API_URL}/files`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
-            
-            if (response.status === 401) {
-                localStorage.removeItem("token");
-                window.location.href = "./login.html";
-                return;
-            }
-            
+            if (response.status === 401) { localStorage.removeItem("token"); window.location.href = "./login.html"; return; }
             const files = await response.json();
             renderFiles(files);
-        } catch (error) {
-            console.error("Error fetching files:", error);
-            filesContainer.innerHTML = `<div class="col-12 text-center text-danger mt-5">Error de conexión con el servidor.</div>`;
-        }
+        } catch (error) { filesContainer.innerHTML = `<div class="col-12 text-center text-danger mt-5">Error de conexión.</div>`; }
     }
 
-    // Funciones Helper para íconos
     function getFileIcon(type) {
         if (type.includes("image")) return "bi-file-earmark-image text-primary";
         if (type.includes("text") || type.includes("pdf")) return "bi-file-earmark-text text-success";
         return "bi-file-earmark-zip text-secondary";
     }
 
-    // Renderizar Archivos
     function renderFiles(files) {
         filesContainer.innerHTML = ""; 
-        
         if (!files || files.length === 0) {
-            filesContainer.innerHTML = `<div class="col-12 text-center mt-5 text-muted"><h4>Aún no has subido archivos.</h4><p>Sube tu primer archivo en la nube haciendo clic arriba a la derecha.</p></div>`;
+            filesContainer.innerHTML = `<div class="col-12 text-center mt-5 text-muted"><h4>Aún no has subido archivos.</h4></div>`;
             return;
         }
-
         files.forEach(f => {
             const date = new Date(f.createdAt).toLocaleString('es-ES', { dateStyle: 'medium' });
-            const icon = getFileIcon(f.type);
             const isImage = f.type.includes("image");
-            
-            // Si es imagen, mostramos la miniatura, si no, un gran ícono
             const previewHtml = isImage 
-                ? `<img src="${f.url}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="${f.name}">`
-                : `<div class="d-flex align-items-center justify-content-center bg-body-tertiary" style="height: 150px;"><i class="bi ${icon}" style="font-size: 4rem;"></i></div>`;
-
+                ? `<img src="${f.url}" class="card-img-top" style="height: 150px; object-fit: cover;">`
+                : `<div class="d-flex align-items-center justify-content-center bg-body-tertiary" style="height: 150px;"><i class="bi ${getFileIcon(f.type)}" style="font-size: 4rem;"></i></div>`;
             const card = document.createElement("div");
             card.className = "col-sm-6 col-md-4 col-lg-3 mb-4";
             card.innerHTML = `
@@ -78,90 +55,75 @@ document.addEventListener("DOMContentLoaded", () => {
                     ${previewHtml}
                     <div class="card-body">
                         <h6 class="card-title text-truncate" title="${f.name}">${f.name}</h6>
-                        <p class="card-text text-muted small mb-3">Subido el: ${date}</p>
-                        <a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-primary w-100">
-                            <i class="bi bi-cloud-arrow-down me-1"></i> Ver / Descargar
-                        </a>
+                        <p class="card-text text-muted small mb-3">Subido: ${date}</p>
+                        <a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-cloud-arrow-down me-1"></i> Ver</a>
                     </div>
-                </div>
-            `;
+                </div>`;
             filesContainer.appendChild(card);
         });
     }
 
-    // Subir Archivo 
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
+
     fileForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const fileInput = document.getElementById("fileUpload");
         if (fileInput.files.length === 0) return;
-        
         const file = fileInput.files[0];
-        if (file.size > 10 * 1024 * 1024) {
-            alert("El archivo supera el límite de 10 MB.");
-            return;
-        }
+        
+        if (file.size > 4 * 1024 * 1024) return alert("El archivo supera el límite de 4 MB.");
+
+        const isImage = file.type.includes("image");
+        const endpoint = isImage ? SERVERLESS_URL_IMAGES : SERVERLESS_URL_TEXTS;
 
         const submitBtn = fileForm.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Subiendo a S3...';
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Subiendo a S3/Blob...';
         submitBtn.disabled = true;
         
         try {
-            // PASO 1: Subir el archivo físico al API Gateway (Lambda)
-            const formData = new FormData();
-            formData.append("file", file);
+            const base64Data = await toBase64(file);
             
-            const serverlessResponse = await fetch(SERVERLESS_URL, {
+            const serverlessResponse = await fetch(endpoint, {
                 method: "POST",
-                headers: { "Authorization": `Bearer ${token}` },
-                body: formData
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: file.name,
+                    contentType: file.type || "text/plain",
+                    data: base64Data
+                })
             });
 
-            if (!serverlessResponse.ok) {
-                throw new Error("Error en el API Gateway al subir el archivo.");
-            }
-
-            // El Lambda nos devuelve la URL pública del archivo en S3
+            if (!serverlessResponse.ok) throw new Error("Error en el API Gateway al subir.");
             const fileData = await serverlessResponse.json();
-            // Esperamos que devuelva: { "name": "...", "type": "...", "url": "https://..." }
 
-            // PASO 2: Registrar esa URL en nuestro Backend (Load Balancer -> RDS)
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando en DB...';
-
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando en DB...';
             const backendResponse = await fetch(`${API_URL}/files`, {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}` 
-                },
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                 body: JSON.stringify({
                     name: fileData.name || file.name,
-                    type: fileData.type || (file.type.includes("image") ? "image" : "other"),
+                    type: fileData.type || (isImage ? "image" : "other"),
                     url: fileData.url
                 })
             });
             
             if (backendResponse.ok) {
-                // Cerrar modal
-                const modalEl = document.getElementById("fileModal");
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                modal.hide();
+                bootstrap.Modal.getInstance(document.getElementById("fileModal")).hide();
                 fileForm.reset();
-                
-                // Recargar archivos
                 fetchFiles();
             } else {
                 const data = await backendResponse.json();
-                alert(data.error || "Error al registrar el archivo en la base de datos.");
+                alert(data.error || "Error al registrar en la base de datos.");
             }
-        } catch (error) {
-            console.error(error);
-            alert("Error de conexión: Verifica que el link del SERVERLESS_URL sea correcto.");
-        } finally {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }
+        } catch (error) { alert("Error de conexión al subir el archivo."); }
+        finally { submitBtn.innerHTML = originalText; submitBtn.disabled = false; }
     });
 
-
+    fetchFiles();
 });

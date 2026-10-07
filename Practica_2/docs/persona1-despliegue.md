@@ -22,11 +22,11 @@ Todo se hace con la **cuenta raíz**, en **IAM** (buscador de arriba de la conso
 | `jax` | Jax | `AmazonEC2FullAccess` | Consola |
 | `miguel` | Miguel | `AmazonS3FullAccess`, `AmazonRDSFullAccess`, `AmazonEC2FullAccess` (\*) | Consola |
 | `jose` | José | `AWSLambda_FullAccess`, `AmazonAPIGatewayAdministrator`, `AmazonS3FullAccess` | Consola |
-| `g6-backend-s3` | Los backends de las 2 EC2 | `G6-S3-Archivos` (política propia) | Solo llaves de acceso |
+| `g6-backend-s3` | Los backends de las 2 EC2 | `G6-App-S3-Archivos` (política propia) | Solo llaves de acceso |
 
 (\*) El security group de la RDS se edita desde EC2. Miguel lo necesita para abrir el puerto 5432.
 
-### 1.1 Crear la política `G6-S3-Archivos`
+### 1.1 Crear la política `G6-App-S3-Archivos`
 
 Para las personas no hace falta crear políticas: AWS ya trae las *FullAccess* de cada servicio. Solo se crea una para los backends y las Lambdas, que únicamente suben archivos al bucket.
 
@@ -47,9 +47,9 @@ Para las personas no hace falta crear políticas: AWS ya trae las *FullAccess* d
    }
    ```
 
-4. **Next** → *Policy name*: `G6-S3-Archivos` → **Create policy**.
+4. **Next** → *Policy name*: `G6-App-S3-Archivos` → **Create policy**.
 
-**Capturas:** JSON de la política `G6-S3-Archivos`
+**Capturas:** JSON de la política `G6-App-S3-Archivos`
 
 ### 1.2 Crear los usuarios de las personas
 
@@ -69,20 +69,20 @@ Entregar a cada integrante **solo su** `.csv`, por mensaje privado.
 ### 1.3 Crear el usuario de los backends (`g6-backend-s3`)
 
 1. **Users** → **Create user** → *User name*: `g6-backend-s3`. **No** marcar el acceso a consola → **Next**.
-2. **Attach policies directly** → en *Filter by Type* elegir **Customer managed** → marcar `G6-S3-Archivos` → **Next** → **Create user**.
+2. **Attach policies directly** → en *Filter by Type* elegir **Customer managed** → marcar `G6-App-S3-Archivos` → **Next** → **Create user**.
 3. Entrar al usuario → pestaña **Security credentials** → **Create access key** → *Use case*: **Other** → **Next** → **Create access key**.
 4. **Download .csv file**. El *Secret access key* solo se muestra esta vez.
 
 Esas llaves van en el `.env` de las **2 EC2** (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`). Las VMs de Azure no las necesitan porque suben a Blob. Pasárselas a Jax por privado y nunca subirlas al repo.
 
-**Capturas:** Usuario `g6-backend-s3` sin acceso a consola, con la política `G6-S3-Archivos`
+**Capturas:** Usuario `g6-backend-s3` sin acceso a consola, con la política `G6-App-S3-Archivos`
 
 ### 1.4 Crear el rol para Lambda (`g6-lambda-role`)
 
 Toda función Lambda necesita un rol, y `AWSLambda_FullAccess` no permite crearlo. Si no se crea aquí, José se queda bloqueado.
 
 1. **Roles** → **Create role** → **AWS service** → *Use case*: **Lambda** → **Next**.
-2. Marcar `AWSLambdaBasicExecutionRole` y `G6-S3-Archivos` → **Next**.
+2. Marcar `AWSLambdaBasicExecutionRole` y `G6-App-S3-Archivos` → **Next**.
 3. *Role name*: `g6-lambda-role` → **Create role**.
 4. Avisar a José que, al crear cada función, elija **Use an existing role** → `g6-lambda-role`.
 
@@ -275,7 +275,7 @@ Usa el **mismo grupo de recursos, región y VNet** que la VM de Python de Person
 
 - [ ] Contrato de API compartido
 - [ ] Backend Node (TypeScript) probado contra el contrato (`test_api.py` 17/17)
-- [ ] Política `G6-S3-Archivos`, usuarios por persona, `g6-backend-s3` y `g6-lambda-role` creados
+- [ ] Política `G6-App-S3-Archivos`, usuarios por persona, `g6-backend-s3` y `g6-lambda-role` creados
 - [ ] EC2 Node con SG mínimo (5000 solo desde el ELB, 22 desde tu IP) y PM2 como servicio
 - [ ] SG de RDS abierto al 5432 solo desde `sg-backend-g6` y las IP de las VM
 - [ ] ELB con los 2 targets *healthy*

@@ -11,7 +11,7 @@ Backend en **Flask**. Se ejecuta con **gunicorn** como servicio de **systemd** e
 3. [Infraestructura en Azure (VM)](#3-infraestructura-en-azure-vm)
 4. [Instalación en el servidor](#4-instalación-en-el-servidor)
 5. [Variables de entorno](#5-variables-de-entorno)
-6. [Servicio de systemd](#6-servicio-de-systemd)
+6. [Iniciar el backend](#6-iniciar-el-backend)
 7. [Comandos de operación](#7-comandos-de-operación)
 8. [Actualizar después de un cambio](#8-actualizar-después-de-un-cambio)
 9. [Verificación](#9-verificación)
@@ -22,7 +22,7 @@ Backend en **Flask**. Se ejecuta con **gunicorn** como servicio de **systemd** e
 |---|---|
 | Sistema operativo | Ubuntu Server 24.04 LTS |
 | Python | 3.12 (incluido en Ubuntu 24.04) |
-| Servidor WSGI | gunicorn |
+| Gestor de procesos | systemd (servicio `taskflow`) con gunicorn |
 | Puerto | `5000` |
 | Health check | `GET /health` |
 | Base de datos | Amazon RDS PostgreSQL con los scripts de [`database/`](../../database/) ejecutados |
@@ -33,18 +33,18 @@ Región: **us-east-1**.
 
 ### 2.1 Security groups
 
-Se usa el mismo `sg-backend-g6` de la EC2 de Node:
-
 | Security group | Tipo | Puerto | Origen |
 |---|---|---|---|
+| `sg-elb-g6` | HTTP | 80 | `0.0.0.0/0` |
 | `sg-backend-g6` | Custom TCP | 5000 | `sg-elb-g6` |
 | `sg-backend-g6` | SSH | 22 | My IP |
+| SG de la RDS | PostgreSQL | 5432 | `sg-backend-g6` |
 
 ### 2.2 Instancia
 
 | Campo | Valor |
 |---|---|
-| Nombre | `<nombre-ec2-python>` |
+| Nombre | `ec2-python-g6` |
 | AMI | Ubuntu Server 24.04 LTS |
 | Tipo | `t2.micro` / `t3.micro` |
 | Subnet | us-east-1b |
@@ -59,7 +59,10 @@ ssh -i <llave>.pem ubuntu@<IP-publica>
 
 ### 2.3 Load Balancer
 
-La instancia se registra en el target group `tg-backends-g6` (HTTP `5000`, health check `/health`) del load balancer `elb-g6`.
+| Recurso | Configuración |
+|---|---|
+| Target group `tg-backends-g6` | Instances, HTTP `5000`, health check `/health` |
+| Load balancer `elb-g6` | Internet-facing, us-east-1a y us-east-1b, `sg-elb-g6`, listener HTTP `80` → `tg-backends-g6` |
 
 ## 3. Infraestructura en Azure (VM)
 
@@ -69,7 +72,7 @@ La VM va en el **mismo grupo de recursos, región y VNet** que la VM de Node, po
 
 | Campo | Valor |
 |---|---|
-| Nombre | `<nombre-vm-python>` |
+| Nombre | `vm-python-g6` |
 | Imagen | Ubuntu Server 24.04 LTS |
 | Tamaño | `Standard_B1s` |
 | Autenticación | SSH public key, usuario `azureuser` |
@@ -97,32 +100,80 @@ La VM se agrega al backend pool del Azure Load Balancer, con regla al puerto `50
 
 ## 4. Instalación en el servidor
 
-Los pasos son los mismos en la EC2 y en la VM.
+Los pasos son los mismos en la EC2 y en la VM. El backend queda en `~/app` (`/home/ubuntu/app` en la EC2, `/home/azureuser/app` en la VM).
 
 ```bash
-# Python, venv y git
+# Python y venv
 sudo apt update
-sudo apt install -y python3 python3-venv python3-pip git
+sudo apt install -y python3 python3-venv python3-pip
 
-# Código (repositorio privado: usar un fine-grained token con Contents: Read-only)
-git clone -b <rama> https://<TOKEN>@github.com/Jaxrj45/SEMINARIO1_A_2S2026_G6.git
-cd SEMINARIO1_A_2S2026_G6/Practica_2/backends/python
+# Carpeta del backend
+mkdir -p ~/app
+```
 
-# Entorno virtual y dependencias
-python3 -m venv venv
-venv/bin/pip install -r requirements.txt
+Subir a `~/app`, por SFTP (Termius u otro cliente) o con `scp`, estos archivos de `Practica_2/backends/python`:
+
+```
+app.py  config.py  db.py  extensions.py  requirements.txt  test_api.py  routes/  utils/
+```
+
+No se suben `venv/`, `__pycache__/` ni el `.env` local. Con `scp`, desde PowerShell en `Practica_2\backends\python`:
+
+```powershell
+scp -i <llave>.pem -r app.py config.py db.py extensions.py requirements.txt test_api.py routes utils <usuario>@<IP-publica>:~/app/
+```
+
+Entorno virtual y dependencias:
+
+```bash
+python3 -m venv ~/app/venv
+~/app/venv/bin/pip install -r ~/app/requirements.txt
+```
+
+Estructura final:
+
+```
+~/app/
+├── .env
+├── app.py, config.py, db.py, extensions.py, requirements.txt, test_api.py
+├── routes/
+├── utils/
+└── venv/
 ```
 
 ## 5. Variables de entorno
 
 ```bash
-cp .env.example .env
-nano .env
+cat > ~/app/.env <<'EOF'
+# ┌────────────────────────────────┐
+# |  Base de datos (RDS Postgres)  |
+# └────────────────────────────────┘
+DB_HOST=
+DB_PORT=5432
+DB_NAME=taskflow
+DB_USER=
+DB_PASSWORD=
+# RDS PostgreSQL exige SSL
+DB_SSL=true
+
+# ┌─────────────────────────────┐
+# |             JWT             |
+# └─────────────────────────────┘
+JWT_SECRET=CAMBIAR_MISMO_VALOR_EN_TODOS_LOS_SERVIDORES
+JWT_HOURS=8
+
+# ┌─────────────────────────────┐
+# |            Server           |
+# └─────────────────────────────┘
+PORT=5000
+EOF
+chmod 600 ~/app/.env
+nano ~/app/.env
 ```
 
 | Variable | Valor |
 |---|---|
-| `DB_HOST` | Endpoint de RDS |
+| `DB_HOST` | Endpoint de RDS, sin `http://` ni puerto |
 | `DB_PORT` | `5432` |
 | `DB_NAME` | `taskflow` |
 | `DB_USER`, `DB_PASSWORD` | Credenciales de RDS |
@@ -133,72 +184,102 @@ nano .env
 
 El `.env` es el mismo en la EC2 y en la VM. No se sube a GitHub.
 
-## 6. Servicio de systemd
+- Si `DB_HOST` queda vacío, la conexión a la base falla con `/var/run/postgresql/.s.PGSQL.5432`.
+- Los valores con espacios, comillas, `#`, `$` o `\` van entre comillas dobles.
+- Con gunicorn, el puerto lo fija `-b 0.0.0.0:5000` en el servicio; `PORT` solo aplica con `python app.py`.
 
-Crear el servicio:
+## 6. Iniciar el backend
+
+Crear el servicio según el proveedor.
+
+**AWS (EC2, usuario `ubuntu`):**
 
 ```bash
-sudo nano /etc/systemd/system/taskflow-python.service
-```
-
-Contenido (`<usuario>` es `ubuntu` en la EC2 y `azureuser` en la VM):
-
-```ini
+sudo tee /etc/systemd/system/taskflow.service > /dev/null <<'EOF'
 [Unit]
-Description=TaskFlow backend Python (gunicorn)
+Description=TaskFlow Python backend
 After=network.target
 
 [Service]
-User=<usuario>
-WorkingDirectory=/home/<usuario>/SEMINARIO1_A_2S2026_G6/Practica_2/backends/python
-ExecStart=/home/<usuario>/SEMINARIO1_A_2S2026_G6/Practica_2/backends/python/venv/bin/gunicorn -w 2 -b 0.0.0.0:5000 app:app
+User=ubuntu
+WorkingDirectory=/home/ubuntu/app
+EnvironmentFile=/home/ubuntu/app/.env
+ExecStart=/home/ubuntu/app/venv/bin/gunicorn -w 2 -b 0.0.0.0:5000 app:app
 Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
+EOF
 ```
 
-Activar e iniciar:
+**Azure (VM, usuario `azureuser`):**
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now taskflow-python
+sudo tee /etc/systemd/system/taskflow.service > /dev/null <<'EOF'
+[Unit]
+Description=TaskFlow Python backend
+After=network.target
+
+[Service]
+User=azureuser
+WorkingDirectory=/home/azureuser/app
+EnvironmentFile=/home/azureuser/app/.env
+ExecStart=/home/azureuser/app/venv/bin/gunicorn -w 2 -b 0.0.0.0:5000 app:app
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
 ```
 
-Con `enable` el backend se levanta solo al reiniciar la instancia.
+En ambos casos:
+
+```bash
+sudo systemctl daemon-reload            # carga el servicio nuevo
+sudo systemctl enable --now taskflow    # lo inicia y lo deja como servicio del sistema
+```
+
+Con `enable` el backend se levanta solo al reiniciar la instancia, y `Restart=always` lo vuelve a levantar si se cae.
 
 ## 7. Comandos de operación
 
 | Acción | Comando |
 |---|---|
-| Ver estado | `sudo systemctl status taskflow-python` |
-| Ver logs en vivo | `sudo journalctl -u taskflow-python -f` |
-| Últimas 100 líneas de log | `sudo journalctl -u taskflow-python -n 100` |
-| Detener | `sudo systemctl stop taskflow-python` |
-| Iniciar | `sudo systemctl start taskflow-python` |
-| Reiniciar | `sudo systemctl restart taskflow-python` |
-| Quitar el arranque automático | `sudo systemctl disable taskflow-python` |
-| Recargar después de editar el `.service` | `sudo systemctl daemon-reload && sudo systemctl restart taskflow-python` |
+| Ver estado | `systemctl status taskflow` |
+| Ver logs | `sudo journalctl -u taskflow -f` |
+| Últimas 100 líneas de log | `sudo journalctl -u taskflow -n 100 --no-pager` |
+| Detener | `sudo systemctl stop taskflow` |
+| Iniciar (si está detenido) | `sudo systemctl start taskflow` |
+| Reiniciar | `sudo systemctl restart taskflow` |
+| Recargar variables del `.env` | `sudo systemctl restart taskflow` |
+| Recargar después de editar el `.service` | `sudo systemctl daemon-reload && sudo systemctl restart taskflow` |
+| Quitar el arranque automático | `sudo systemctl disable taskflow` |
+| Eliminar el servicio | `sudo systemctl disable --now taskflow && sudo rm /etc/systemd/system/taskflow.service && sudo systemctl daemon-reload` |
 
 ## 8. Actualizar después de un cambio
 
+Volver a subir por SFTP o `scp` los archivos que cambiaron (reemplazando los existentes) y luego:
+
 ```bash
-cd ~/SEMINARIO1_A_2S2026_G6/Practica_2/backends/python
-git pull
-venv/bin/pip install -r requirements.txt
-sudo systemctl restart taskflow-python
+find ~/app -name __pycache__ -type d -not -path "*/venv/*" -exec rm -rf {} +
+~/app/venv/bin/pip install -r ~/app/requirements.txt
+sudo systemctl restart taskflow
 ```
 
 Si solo cambió el `.env`:
 
 ```bash
-sudo systemctl restart taskflow-python
+sudo systemctl restart taskflow
 ```
 
 ## 9. Verificación
 
+gunicorn tarda un par de segundos en abrir el puerto después de iniciar o reiniciar.
+
 ```bash
-curl http://127.0.0.1:5000/health          # {"status":"ok","server":"python"}
+curl http://127.0.0.1:5000/health          # {"server":"python","status":"ok"}
 curl http://<DNS-del-ELB>/health           # AWS
 curl http://<IP-del-Azure-LB>:<puerto>/health   # Azure
 ```
@@ -206,8 +287,10 @@ curl http://<IP-del-Azure-LB>:<puerto>/health   # Azure
 Prueba del contrato completo:
 
 ```bash
-BASE_URL=http://127.0.0.1:5000 venv/bin/python test_api.py
+BASE_URL=http://127.0.0.1:5000 ~/app/venv/bin/python ~/app/test_api.py
 ```
+
+Si registro o login responden 500, el detalle está en `sudo journalctl -u taskflow -n 60 --no-pager`.
 
 ### Ejecución local
 

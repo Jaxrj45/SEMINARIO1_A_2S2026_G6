@@ -1,8 +1,4 @@
-﻿// config.js (VERSIÓN AZURE)
-// Archivo de configuración centralizado para el frontend
-
-// URL del Balanceador de Azure (Backend de Node/Python)
-const API_URL = "http://IP_DEL_LOAD_BALANCER_AZURE_PENDIENTE/api";
-
-// URL de Azure Functions / API Management (Serverless)
-const SERVERLESS_URL = "https://URL_DEL_SERVERLESS_AZURE_PENDIENTE/api/upload";
+// config.js (VERSIÓN AZURE)
+const API_URL = "http://23.101.136.185/api";
+const SERVERLESS_URL_TEXTS = "https://g6-apim.azure-api.net/serverless/textos";
+const SERVERLESS_URL_IMAGES = "https://g6-apim.azure-api.net/serverless/imagenes";

@@ -1,8 +1,4 @@
-﻿// config.js (VERSIÓN AWS)
-// Archivo de configuración centralizado para el frontend
-
-// URL del Balanceador de AWS (Backend de Node/Python)
+// config.js (VERSIÓN AWS)
 const API_URL = "http://elb-g6-53192485.us-east-1.elb.amazonaws.com/api";
-
-// URL de Amazon API Gateway (Funciones Serverless Lambda)
-const SERVERLESS_URL = "https://URL_DEL_API_GATEWAY_AWS_PENDIENTE/api/upload";
+const SERVERLESS_URL_TEXTS = "https://v6vbfsjqyb.execute-api.us-east-1.amazonaws.com/textos";
+const SERVERLESS_URL_IMAGES = "https://v6vbfsjqyb.execute-api.us-east-1.amazonaws.com/imagenes";

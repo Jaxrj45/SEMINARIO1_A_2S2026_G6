@@ -1,137 +1,100 @@
-﻿// auth.js
-// Manejo de Autenticación (Login y Registro)
-
+// auth.js
 document.addEventListener("DOMContentLoaded", () => {
-    
     // 1. Lógica de Login
     const loginForm = document.getElementById("loginForm");
     if (loginForm) {
         loginForm.addEventListener("submit", async (e) => {
-            e.preventDefault(); // Evitamos que la página recargue
-            
-            // Capturamos los datos
+            e.preventDefault(); 
             const username = document.getElementById("loginUsername").value.trim();
             const password = document.getElementById("loginPassword").value.trim();
-            
-            if (!username || !password) {
-                alert("Por favor, ingresa tu usuario y contraseña.");
-                return;
-            }
-            
+            if (!username || !password) return alert("Por favor, ingresa tu usuario y contraseña.");
             try {
-                // Petición al Backend
-                const response = await fetch(`${API_URL}/auth/login`, {
+                const response = await fetch(${API_URL}/auth/login, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ username, password })
                 });
-                
                 const data = await response.json();
-                
                 if (response.ok) {
-                    // Guardamos el token
                     localStorage.setItem("token", data.token);
-                    // Redirigimos al Dashboard
                     window.location.href = "./index.html";
-                } else {
-                    alert(data.error || "Credenciales incorrectas");
-                }
-            } catch (error) {
-                console.error("Error en login:", error);
-                alert("Error al conectar con el servidor. Verifica que el backend esté encendido.");
-            }
+                } else alert(data.error || "Credenciales incorrectas");
+            } catch (error) { alert("Error al conectar con el servidor."); }
         });
     }
 
-    // 2. Lógica de Registro 
+    // Convertir File a Base64
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
+
+    // 2. Lógica de Registro
     const registerForm = document.getElementById("registerForm");
     if (registerForm) {
         registerForm.addEventListener("submit", async (e) => {
             e.preventDefault();
-            
-            // Capturamos los datos de texto
             const username = document.getElementById("registerFullName").value.trim();
             const email = document.getElementById("registerEmail").value.trim();
             const password = document.getElementById("registerPassword").value.trim();
             const confirmPassword = document.getElementById("registerConfirmPassword").value.trim();
             const profileImageInput = document.getElementById("profileImage");
             
-            // Validaciones básicas
-            if (!username || !email || !password || !confirmPassword) {
-                alert("Por favor, completa todos los campos de texto.");
-                return;
-            }
-            if (password !== confirmPassword) {
-                alert("Las contraseñas no coinciden. Intenta de nuevo.");
-                return;
-            }
-            if (profileImageInput.files.length === 0) {
-                alert("Por favor, selecciona una imagen de perfil.");
-                return;
-            }
+            if (!username || !email || !password || !confirmPassword) return alert("Completa todos los campos.");
+            if (password !== confirmPassword) return alert("Las contraseñas no coinciden.");
+            if (profileImageInput.files.length === 0) return alert("Selecciona una imagen de perfil.");
             
+            const file = profileImageInput.files[0];
+            if (file.size > 4 * 1024 * 1024) return alert("La imagen debe pesar menos de 4 MB.");
+
             const submitBtn = registerForm.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Subiendo foto...';
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Subiendo foto...';
             submitBtn.disabled = true;
 
             try {
-                // PASO 1: Subir la foto de perfil al API Gateway (Serverless)
-                const profileImageFile = profileImageInput.files[0];
-                const imageFormData = new FormData();
-                imageFormData.append("file", profileImageFile);
-
-                // Disparamos la imagen hacia el API Gateway
-                const serverlessResponse = await fetch(SERVERLESS_URL, {
+                // PASO 1: Base64
+                const base64Data = await toBase64(file);
+                
+                // Disparamos hacia API Gateway de Imagenes
+                const serverlessResponse = await fetch(SERVERLESS_URL_IMAGES, {
                     method: "POST",
-                    body: imageFormData
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: file.name,
+                        contentType: file.type,
+                        data: base64Data
+                    })
                 });
 
-                if (!serverlessResponse.ok) {
-                    throw new Error("Error al subir la imagen al API Gateway.");
-                }
-
-                // El Gateway nos responde con el link de la foto ya guardada en S3
+                if (!serverlessResponse.ok) throw new Error("Error en API Gateway");
                 const imageData = await serverlessResponse.json();
-                const profileImageUrl = imageData.url; 
-
-                // PASO 2: Mandar los datos de texto + la URL de la foto al Backend (Load Balancer)
-                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Registrando...';
                 
-                // Armamos un JSON purito y limpio
-                const registerPayload = {
-                    username: username,
-                    email: email,
-                    password: password,
-                    confirmPassword: confirmPassword,
-                    profileImageUrl: profileImageUrl // Aquí va el texto del link!
-                };
-
-                const backendResponse = await fetch(`${API_URL}/auth/register`, {
+                // PASO 2: Mandar al LB
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Registrando...';
+                const backendResponse = await fetch(${API_URL}/auth/register, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(registerPayload)
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        username: username,
+                        email: email,
+                        password: password,
+                        confirmPassword: confirmPassword,
+                        profileImageUrl: imageData.url
+                    })
                 });
-                
-                const data = await backendResponse.json();
                 
                 if (backendResponse.ok) {
                     alert("¡Registro exitoso! Ahora puedes iniciar sesión.");
                     window.location.href = "./login.html";
                 } else {
-                    alert(data.error || "Error al registrar el usuario.");
+                    const data = await backendResponse.json();
+                    alert(data.error || "Error al registrar.");
                 }
-            } catch (error) {
-                console.error("Error en registro:", error);
-                alert("Error de conexión: Verifica que el link del SERVERLESS_URL sea correcto y el backend esté encendido.");
-            } finally {
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }
+            } catch (error) { alert("Error de conexión durante el registro."); }
+            finally { submitBtn.innerHTML = originalText; submitBtn.disabled = false; }
         });
     }
 });

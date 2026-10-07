@@ -1,0 +1,9 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AZURE_STORAGE_CONNECTION_STRING": "<cadena de conexion de la cuenta de almacenamiento>",
+    "AZURE_STORAGE_CONTAINER": "<contenedor de archivos>"
+  }
+}

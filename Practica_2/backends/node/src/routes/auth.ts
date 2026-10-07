@@ -1,20 +1,19 @@
 import { Router } from 'express';
 import { callSp, UNIQUE_VIOLATION } from '../config/db';
-import { uploadFile } from '../config/storage';
-import { upload } from '../middleware/upload';
 import { makeToken } from '../middleware/auth';
 import { err, text } from '../utils/http';
 import { UserRow, userToDict } from '../utils/serialize';
 
 const router = Router();
 
-// multipart/form-data (con archivo profileImage) o JSON (con profileImageUrl ya subida)
-router.post('/register', upload.single('profileImage'), async (req, res, next) => {
+// JSON. La foto de perfil ya fue subida por Lambda / Azure Functions: llega su URL en profileImageUrl
+router.post('/register', async (req, res, next) => {
   const data = req.body || {};
   const username = text(data.username);
   const email = text(data.email);
   const password = typeof data.password === 'string' ? data.password : '';
   const confirm = typeof data.confirmPassword === 'string' ? data.confirmPassword : '';
+  const imageUrl = text(data.profileImageUrl) || null;
 
   if (!username || !email || !password) {
     return err(res, 'username, email y password son obligatorios', 400);
@@ -22,11 +21,11 @@ router.post('/register', upload.single('profileImage'), async (req, res, next) =
   if (password !== confirm) {
     return err(res, 'Las contraseñas no coinciden', 400);
   }
+  if (imageUrl && !/^https?:\/\//i.test(imageUrl)) {
+    return err(res, 'profileImageUrl debe ser http(s)', 400);
+  }
 
   try {
-    let imageUrl: string | null = text(data.profileImageUrl) || null;
-    if (req.file) imageUrl = await uploadFile(req.file, 'profiles');
-
     // El SP encripta la contrasena con bcrypt (pgcrypto)
     const [user] = await callSp<UserRow>(
       'sp_registrar_usuario',

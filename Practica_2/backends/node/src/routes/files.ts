@@ -1,10 +1,8 @@
 import { Router } from 'express';
 import { callSp } from '../config/db';
-import { uploadFile } from '../config/storage';
 import { authRequired } from '../middleware/auth';
-import { upload, originalName } from '../middleware/upload';
 import { err, text } from '../utils/http';
-import { FileRow, fileToDict, fileCategory } from '../utils/serialize';
+import { FileRow, fileToDict } from '../utils/serialize';
 
 const router = Router();
 router.use(authRequired);
@@ -20,33 +18,18 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// Dos modos:
-//  - multipart/form-data con el campo "file": el servidor lo sube a S3/Blob con el SDK.
-//  - JSON { name, type, url }: el archivo ya fue subido por Lambda / Azure Functions
-//    y solo se registra su URL para que aparezca en el listado del usuario.
-router.post('/', upload.single('file'), async (req, res, next) => {
-  let name: string;
-  let type: string;
-  let url: string;
+// JSON { name, type, url }: el archivo ya fue subido por Lambda / Azure Functions
+// y solo se registra su URL para que aparezca en el listado del usuario.
+router.post('/', async (req, res, next) => {
+  const data = req.body || {};
+  const name = text(data.name);
+  const url = text(data.url);
+  const type = text(data.type) || 'other';
+  if (!name || !url) return err(res, 'Se requieren los campos name y url', 400);
+  if (!/^https?:\/\//i.test(url)) return err(res, 'url debe ser http(s)', 400);
+  if (!FILE_TYPES.has(type)) return err(res, 'type debe ser image, text u other', 400);
 
   try {
-    if (req.file) {
-      name = originalName(req.file);
-      if (!name) return err(res, "Se requiere el campo 'file'", 400);
-      type = fileCategory(req.file.mimetype);
-      url = await uploadFile(req.file, `files/${req.userId}`);
-    } else {
-      const data = req.body || {};
-      name = text(data.name);
-      url = text(data.url);
-      type = text(data.type) || 'other';
-      if (!name || !url) {
-        return err(res, "Se requiere el campo 'file' o los campos name y url", 400);
-      }
-      if (!/^https?:\/\//i.test(url)) return err(res, 'url debe ser http(s)', 400);
-      if (!FILE_TYPES.has(type)) return err(res, 'type debe ser image, text u other', 400);
-    }
-
     const [file] = await callSp<FileRow>('sp_registrar_archivo', req.userId, name, type, url);
     return res.status(201).json(fileToDict(file));
   } catch (e) {

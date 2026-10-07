@@ -28,10 +28,3 @@ def auth_required(fn):
             return err("Token inválido o expirado", 401)
         return fn(*args, **kwargs)
     return wrapper
-
-def file_category(mimetype):
-    if mimetype.startswith("image/"):
-        return "image"
-    if mimetype.startswith("text/"):
-        return "text"
-    return "other"

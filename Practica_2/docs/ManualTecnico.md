@@ -169,7 +169,7 @@ Bucket de archivos con acceso público de lectura:
 ![S3 de archivos](../serverless/capturas/aws-s3-archivos-permisos.png)
 
 Bucket del frontend (`practica2semi1a2s2026paginawebg6`) configurado con Alojamiento de sitios web estáticos y políticas públicas:
-![S3 Frontend](img/aws-bucket.png)
+![S3 Frontend](img/miguel/aws-bucket.png)
 
 **URL Pública (AWS):** `http://practica2semi1a2s2026paginawebg6.s3-website-us-east-1.amazonaws.com/`
 
@@ -248,7 +248,7 @@ Pruebas de la API (`test_api.py`) contra la VM:
 #### Azure Blob Storage
 
 Cuenta de almacenamiento `taskflowstorageg6` configurada con el contenedor público `practica2semi1a2s2026archivosg6` y el contenedor `$web` para el despliegue del Frontend estático:
-![Azure Blob Storage y Sitio Estático](img/azure-bucket.png)
+![Azure Blob Storage y Sitio Estático](img/miguel/azure-bucket.png)
 
 **URL Pública (Azure):** `http://taskflowstorageg6.z13.web.core.windows.net/`
 

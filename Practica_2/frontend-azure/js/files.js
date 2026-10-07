@@ -6,9 +6,9 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         document.getElementById("navUsername").textContent = payload.username;
-        document.getElementById("dropdownUsername").innerHTML = ${payload.username} <small>Miembro de TaskFlow</small>;
-        document.getElementById("navUserImage").src = https://ui-avatars.com/api/?name=&background=2563eb&color=fff;
-        document.getElementById("menuUserImage").src = https://ui-avatars.com/api/?name=&background=2563eb&color=fff;
+        document.getElementById("dropdownUsername").innerHTML = `${payload.username} <small>Miembro de TaskFlow</small>`;
+        document.getElementById("navUserImage").src = `https://ui-avatars.com/api/?name=${payload.username}&background=2563eb&color=fff`;
+        document.getElementById("menuUserImage").src = `https://ui-avatars.com/api/?name=${payload.username}&background=2563eb&color=fff`;
     } catch (e) {}
 
     document.getElementById("btnLogout").addEventListener("click", () => {
@@ -21,13 +21,13 @@ document.addEventListener("DOMContentLoaded", () => {
     
     async function fetchFiles() {
         try {
-            const response = await fetch(${API_URL}/files, {
-                headers: { "Authorization": Bearer  }
+            const response = await fetch(`${API_URL}/files`, {
+                headers: { "Authorization": `Bearer ${token}` }
             });
             if (response.status === 401) { localStorage.removeItem("token"); window.location.href = "./login.html"; return; }
             const files = await response.json();
             renderFiles(files);
-        } catch (error) { filesContainer.innerHTML = <div class="col-12 text-center text-danger mt-5">Error de conexión.</div>; }
+        } catch (error) { filesContainer.innerHTML = `<div class="col-12 text-center text-danger mt-5">Error de conexión.</div>`; }
     }
 
     function getFileIcon(type) {
@@ -39,26 +39,26 @@ document.addEventListener("DOMContentLoaded", () => {
     function renderFiles(files) {
         filesContainer.innerHTML = ""; 
         if (!files || files.length === 0) {
-            filesContainer.innerHTML = <div class="col-12 text-center mt-5 text-muted"><h4>Aún no has subido archivos.</h4></div>;
+            filesContainer.innerHTML = `<div class="col-12 text-center mt-5 text-muted"><h4>Aún no has subido archivos.</h4></div>`;
             return;
         }
         files.forEach(f => {
             const date = new Date(f.createdAt).toLocaleString('es-ES', { dateStyle: 'medium' });
             const isImage = f.type.includes("image");
             const previewHtml = isImage 
-                ? <img src="" class="card-img-top" style="height: 150px; object-fit: cover;">
-                : <div class="d-flex align-items-center justify-content-center bg-body-tertiary" style="height: 150px;"><i class="bi " style="font-size: 4rem;"></i></div>;
+                ? `<img src="${f.url}" class="card-img-top" style="height: 150px; object-fit: cover;">`
+                : `<div class="d-flex align-items-center justify-content-center bg-body-tertiary" style="height: 150px;"><i class="bi ${getFileIcon(f.type)}" style="font-size: 4rem;"></i></div>`;
             const card = document.createElement("div");
             card.className = "col-sm-6 col-md-4 col-lg-3 mb-4";
-            card.innerHTML = 
+            card.innerHTML = `
                 <div class="card card-task h-100 bg-body">
-                    
+                    ${previewHtml}
                     <div class="card-body">
-                        <h6 class="card-title text-truncate" title=""></h6>
-                        <p class="card-text text-muted small mb-3">Subido: </p>
-                        <a href="" target="_blank" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-cloud-arrow-down me-1"></i> Ver</a>
+                        <h6 class="card-title text-truncate" title="${f.name}">${f.name}</h6>
+                        <p class="card-text text-muted small mb-3">Subido: ${date}</p>
+                        <a href="${f.url}" target="_blank" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-cloud-arrow-down me-1"></i> Ver</a>
                     </div>
-                </div>;
+                </div>`;
             filesContainer.appendChild(card);
         });
     }
@@ -103,9 +103,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const fileData = await serverlessResponse.json();
 
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando en DB...';
-            const backendResponse = await fetch(${API_URL}/files, {
+            const backendResponse = await fetch(`${API_URL}/files`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": Bearer  },
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                 body: JSON.stringify({
                     name: fileData.name || file.name,
                     type: fileData.type || (isImage ? "image" : "other"),

@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const password = document.getElementById("loginPassword").value.trim();
             if (!username || !password) return alert("Por favor, ingresa tu usuario y contraseña.");
             try {
-                const response = await fetch(${API_URL}/auth/login, {
+                const response = await fetch(`${API_URL}/auth/login`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ username, password })
@@ -74,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 // PASO 2: Mandar al LB
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Registrando...';
-                const backendResponse = await fetch(${API_URL}/auth/register, {
+                const backendResponse = await fetch(`${API_URL}/auth/register`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

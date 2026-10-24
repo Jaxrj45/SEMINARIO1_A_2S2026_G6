@@ -1,0 +1,65 @@
+{
+  "GET /api/posts?tag=Beach": {
+    "notes": "Propias + de amigos, createdAt descendente. Sin tag = filtro \"Todos\". description puede ser null.",
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Publicaciones obtenidas",
+        "data": [
+          {
+            "id": 12,
+            "author": { "id": 3, "username": "ana", "fullName": "Ana López", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/21bc-ana.jpg" },
+            "description": "Fin de semana",
+            "imageUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Publicadas/8f3a-playa.jpg",
+            "labels": ["Beach", "Outdoors", "Sea"],
+            "commentCount": 2,
+            "createdAt": "2026-10-24T15:30:00Z"
+          }
+        ]
+      }
+    }
+  },
+
+  "POST /api/posts": {
+    "notes": "El frontend ya subió la imagen con POST {UPLOAD_API}/upload/post y reenvía imageKey y labels. El backend construye imageUrl a partir de imageKey.",
+    "request": {
+      "description": "Fin de semana",
+      "imageKey": "Fotos_Publicadas/8f3a-playa.jpg",
+      "labels": ["Beach", "Sea", "Outdoors"]
+    },
+    "response": {
+      "201": {
+        "status": "success",
+        "message": "Publicación creada",
+        "data": {
+          "id": 12,
+          "author": { "id": 3, "username": "ana", "fullName": "Ana López", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/21bc-ana.jpg" },
+          "description": "Fin de semana",
+          "imageUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Publicadas/8f3a-playa.jpg",
+          "labels": ["Beach", "Outdoors", "Sea"],
+          "commentCount": 0,
+          "createdAt": "2026-10-24T15:30:00Z"
+        }
+      },
+      "400": {
+        "status": "error",
+        "message": "La imagen es obligatoria",
+        "data": { "code": "VALIDATION_ERROR", "fields": { "imageKey": "Requerido" } }
+      }
+    }
+  },
+
+  "GET /api/tags?q=be": {
+    "notes": "Etiquetas presentes en el feed del usuario, orden alfabético. q: coincidencia parcial sin distinguir mayúsculas. El filtro \"Todos\" lo agrega el frontend.",
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Etiquetas obtenidas",
+        "data": [
+          { "name": "Beach", "count": 3 },
+          { "name": "Bed", "count": 1 }
+        ]
+      }
+    }
+  }
+}

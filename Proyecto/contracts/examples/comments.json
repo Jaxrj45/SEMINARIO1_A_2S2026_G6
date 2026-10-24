@@ -1,0 +1,48 @@
+{
+  "GET /api/posts/{id}/comments": {
+    "notes": "Orden ascendente por createdAt.",
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Comentarios obtenidos",
+        "data": [
+          {
+            "id": 40,
+            "postId": 12,
+            "author": { "id": 8, "username": "lucia", "fullName": "Lucía Gómez", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/41ef-lucia.jpg" },
+            "text": "¡Qué buena foto!",
+            "createdAt": "2026-10-24T15:40:00Z"
+          }
+        ]
+      },
+      "404": {
+        "status": "error",
+        "message": "La publicación no existe",
+        "data": { "code": "NOT_FOUND" }
+      }
+    }
+  },
+
+  "POST /api/posts/{id}/comments": {
+    "notes": "Solo el autor de la publicación o sus amigos pueden comentar.",
+    "request": { "text": "¡Qué buena foto!" },
+    "response": {
+      "201": {
+        "status": "success",
+        "message": "Comentario publicado",
+        "data": {
+          "id": 40,
+          "postId": 12,
+          "author": { "id": 8, "username": "lucia", "fullName": "Lucía Gómez", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/41ef-lucia.jpg" },
+          "text": "¡Qué buena foto!",
+          "createdAt": "2026-10-24T15:40:00Z"
+        }
+      },
+      "403": {
+        "status": "error",
+        "message": "Solo los amigos del autor pueden comentar",
+        "data": { "code": "NOT_FRIENDS" }
+      }
+    }
+  }
+}

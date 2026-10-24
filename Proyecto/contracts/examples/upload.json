@@ -1,0 +1,59 @@
+{
+  "POST {UPLOAD_API}/upload/profile": {
+    "notes": "Pública porque se usa durante el registro. imageBase64 sin prefijo data:. Máximo 1.5 MB antes de codificar.",
+    "request": { "fileName": "ana.jpg", "contentType": "image/jpeg", "imageBase64": "/9j/4AAQSkZJRgABAQ..." },
+    "response": {
+      "201": {
+        "status": "success",
+        "message": "Imagen subida",
+        "data": {
+          "key": "Fotos_Perfil/21bc-ana.jpg",
+          "url": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/21bc-ana.jpg"
+        }
+      },
+      "413": {
+        "status": "error",
+        "message": "La imagen supera el tamaño permitido",
+        "data": { "code": "IMAGE_TOO_LARGE" }
+      },
+      "400": {
+        "status": "error",
+        "message": "Formato de imagen no permitido",
+        "data": { "code": "UNSUPPORTED_MEDIA_TYPE" }
+      }
+    }
+  },
+
+  "POST {UPLOAD_API}/upload/post": {
+    "notes": "Igual que upload/profile, pero guarda en Fotos_Publicadas y devuelve las etiquetas de Rekognition DetectLabels (en inglés, orden por confianza).",
+    "request": { "fileName": "playa.jpg", "contentType": "image/jpeg", "imageBase64": "/9j/4AAQSkZJRgABAQ..." },
+    "response": {
+      "201": {
+        "status": "success",
+        "message": "Imagen subida",
+        "data": {
+          "key": "Fotos_Publicadas/8f3a-playa.jpg",
+          "url": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Publicadas/8f3a-playa.jpg",
+          "labels": ["Beach", "Sea", "Outdoors"]
+        }
+      }
+    }
+  },
+
+  "POST {UPLOAD_API}/face/compare": {
+    "notes": "Solo backend → Lambda, con cabecera x-api-key. match = similarity >= 90.",
+    "request": { "sourceBase64": "/9j/4AAQSkZJRgABAQ...", "targetKey": "Fotos_Perfil/21bc-ana.jpg" },
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Comparación realizada",
+        "data": { "match": true, "similarity": 98.2 }
+      },
+      "422": {
+        "status": "error",
+        "message": "No se detectó un rostro en la imagen",
+        "data": { "code": "NO_FACE_DETECTED" }
+      }
+    }
+  }
+}

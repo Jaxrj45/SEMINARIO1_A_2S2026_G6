@@ -1,0 +1,34 @@
+{
+  "GET /api/chat/{friendId}/messages?beforeId=91&limit=50": {
+    "notes": "Historial con un amigo (403 NOT_FRIENDS si no lo es). Orden ascendente por createdAt. beforeId y limit son opcionales (limit por defecto 50, máximo 100).",
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Mensajes obtenidos",
+        "data": [
+          { "id": 90, "fromUserId": 5, "toUserId": 3, "text": "¿Vamos mañana?", "createdAt": "2026-10-24T15:30:30Z" },
+          { "id": 91, "fromUserId": 3, "toUserId": 5, "text": "hola", "createdAt": "2026-10-24T15:31:00Z" }
+        ]
+      }
+    }
+  },
+
+  "WS /api/ws?token=<token>": {
+    "notes": "Los mensajes WebSocket no usan el formato status/message/data: usan { type, data }. El servidor guarda en RDS y cada instancia consulta mensajes nuevos cada 1-2 s y los empuja a los sockets de ambos participantes. El frontend descarta duplicados por id. Cliente y servidor envían ping cada 30 s. Si el token es inválido el servidor cierra con código 4401.",
+    "clientToServer": {
+      "message": { "type": "message", "data": { "toUserId": 5, "text": "hola" } },
+      "ping": { "type": "ping" }
+    },
+    "serverToClient": {
+      "message": {
+        "type": "message",
+        "data": { "id": 91, "fromUserId": 3, "toUserId": 5, "text": "hola", "createdAt": "2026-10-24T15:31:00Z" }
+      },
+      "pong": { "type": "pong" },
+      "error": {
+        "type": "error",
+        "data": { "code": "NOT_FRIENDS", "message": "Solo puedes escribir a tus amigos" }
+      }
+    }
+  }
+}

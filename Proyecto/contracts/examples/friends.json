@@ -1,0 +1,89 @@
+{
+  "POST /api/friends/requests": {
+    "request": { "toUserId": 5 },
+    "response": {
+      "201": {
+        "status": "success",
+        "message": "Solicitud enviada",
+        "data": {
+          "id": 14,
+          "fromUser": { "id": 3, "username": "ana", "fullName": "Ana López", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/21bc-ana.jpg" },
+          "toUser": { "id": 5, "username": "luis", "fullName": "Luis Pérez", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/09cd-luis.jpg" },
+          "status": "pending",
+          "createdAt": "2026-10-24T15:10:00Z"
+        }
+      },
+      "409": {
+        "status": "error",
+        "message": "Ya existe una solicitud pendiente con este usuario",
+        "data": { "code": "REQUEST_ALREADY_EXISTS" }
+      }
+    }
+  },
+
+  "GET /api/friends/requests": {
+    "notes": "Solo solicitudes pendientes. Orden descendente por createdAt.",
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Solicitudes obtenidas",
+        "data": {
+          "received": [
+            {
+              "id": 11,
+              "fromUser": { "id": 8, "username": "lucia", "fullName": "Lucía Gómez", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/41ef-lucia.jpg" },
+              "toUser": { "id": 3, "username": "ana", "fullName": "Ana López", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/21bc-ana.jpg" },
+              "status": "pending",
+              "createdAt": "2026-10-24T14:00:00Z"
+            }
+          ],
+          "sent": [
+            {
+              "id": 14,
+              "fromUser": { "id": 3, "username": "ana", "fullName": "Ana López", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/21bc-ana.jpg" },
+              "toUser": { "id": 5, "username": "luis", "fullName": "Luis Pérez", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/09cd-luis.jpg" },
+              "status": "pending",
+              "createdAt": "2026-10-24T15:10:00Z"
+            }
+          ]
+        }
+      }
+    }
+  },
+
+  "PUT /api/friends/requests/{id}": {
+    "notes": "Solo el destinatario puede responder (403 FORBIDDEN si no). action: accept | reject.",
+    "request": { "action": "accept" },
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Solicitud aceptada",
+        "data": {
+          "id": 11,
+          "fromUser": { "id": 8, "username": "lucia", "fullName": "Lucía Gómez", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/41ef-lucia.jpg" },
+          "toUser": { "id": 3, "username": "ana", "fullName": "Ana López", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/21bc-ana.jpg" },
+          "status": "accepted",
+          "createdAt": "2026-10-24T14:00:00Z"
+        }
+      },
+      "404": {
+        "status": "error",
+        "message": "La solicitud no existe",
+        "data": { "code": "NOT_FOUND" }
+      }
+    }
+  },
+
+  "GET /api/friends": {
+    "notes": "Amigos del usuario (se muestran en el chat). Orden alfabético por fullName.",
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Amigos obtenidos",
+        "data": [
+          { "id": 8, "username": "lucia", "fullName": "Lucía Gómez", "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/41ef-lucia.jpg" }
+        ]
+      }
+    }
+  }
+}

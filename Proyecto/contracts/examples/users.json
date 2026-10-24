@@ -1,0 +1,75 @@
+{
+  "GET /api/users/me": {
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Perfil obtenido",
+        "data": {
+          "id": 3,
+          "username": "ana",
+          "fullName": "Ana López",
+          "email": "ana@example.com",
+          "dpi": "1234567890101",
+          "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/21bc-ana.jpg",
+          "createdAt": "2026-10-24T15:00:00Z"
+        }
+      }
+    }
+  },
+
+  "PUT /api/users/me": {
+    "notes": "Todos los campos son opcionales excepto password. Si cambia la foto, el frontend la sube antes y envía photoKey. El backend valida la contraseña, actualiza RDS y luego Cognito (AdminUpdateUserAttributes: name, custom:dpi).",
+    "request": {
+      "fullName": "Ana María López",
+      "dpi": "1234567890101",
+      "photoKey": "Fotos_Perfil/77aa-ana.jpg",
+      "password": "Secreta123!"
+    },
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Perfil actualizado",
+        "data": {
+          "id": 3,
+          "username": "ana",
+          "fullName": "Ana María López",
+          "email": "ana@example.com",
+          "dpi": "1234567890101",
+          "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/77aa-ana.jpg",
+          "createdAt": "2026-10-24T15:00:00Z"
+        }
+      },
+      "403": {
+        "status": "error",
+        "message": "La contraseña es incorrecta",
+        "data": { "code": "INVALID_PASSWORD" }
+      }
+    }
+  },
+
+  "GET /api/users/discover?q=lu": {
+    "notes": "Usuarios que no son amigos ni el propio usuario. q filtra por username o fullName (opcional). requestStatus: none | sent | received.",
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Usuarios obtenidos",
+        "data": [
+          {
+            "id": 5,
+            "username": "luis",
+            "fullName": "Luis Pérez",
+            "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/09cd-luis.jpg",
+            "requestStatus": "none"
+          },
+          {
+            "id": 8,
+            "username": "lucia",
+            "fullName": "Lucía Gómez",
+            "photoUrl": "https://semi1proyecto-g6.s3.amazonaws.com/Fotos_Perfil/41ef-lucia.jpg",
+            "requestStatus": "received"
+          }
+        ]
+      }
+    }
+  }
+}

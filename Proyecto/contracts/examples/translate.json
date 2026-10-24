@@ -1,0 +1,23 @@
+{
+  "POST /api/translate": {
+    "notes": "targetLang: es | en | fr | pt. El origen se detecta automáticamente (SourceLanguageCode \"auto\", requiere comprehend:DetectDominantLanguage en el rol de la EC2).",
+    "request": { "text": "Hola mundo", "targetLang": "en" },
+    "response": {
+      "200": {
+        "status": "success",
+        "message": "Texto traducido",
+        "data": { "translatedText": "Hello world", "sourceLang": "es", "targetLang": "en" }
+      },
+      "400": {
+        "status": "error",
+        "message": "Idioma no soportado",
+        "data": { "code": "VALIDATION_ERROR", "fields": { "targetLang": "Debe ser es, en, fr o pt" } }
+      },
+      "502": {
+        "status": "error",
+        "message": "No se pudo traducir el texto",
+        "data": { "code": "UPSTREAM_ERROR" }
+      }
+    }
+  }
+}

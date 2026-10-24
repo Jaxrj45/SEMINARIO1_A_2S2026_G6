@@ -5,7 +5,7 @@
 Todo se hace desde la consola web de AWS, en la región **us-east-1**, en la sección **EC2**. Antes hay que tener:
 
 - Las dos EC2 creadas y respondiendo `/api/health` en el puerto 5000 ([backend/node/README.md](../backend/node/README.md) y [backend/python/README.md](../backend/python/README.md)).
-- Los security groups `sg-elb-g6` y `sg-backend-g6` ([configuracion-security-groups.md](configuracion-security-groups.md)).
+- Los security groups `g6-sg-elb` y `g6-sg-backend` ([configuracion-security-groups.md](configuracion-security-groups.md)).
 
 Las líneas que dicen **(captura)** son las que van al README final.
 
@@ -61,7 +61,7 @@ Después, en el target group → **Attributes** → **Edit**:
 | IP address type | IPv4 |
 | VPC | La VPC por defecto |
 | Mappings | `us-east-1a` y `us-east-1b` (tienen que estar las zonas donde están las EC2) |
-| Security groups | Quitar `default` y dejar solo `sg-elb-g6` |
+| Security groups | Quitar `default` y dejar solo `g6-sg-elb` |
 | Listener | HTTP : 80 → Forward to `tg-semisocial-g6` |
 
 **Create load balancer**. Tarda unos minutos en pasar de **Provisioning** a **Active**.
@@ -76,7 +76,7 @@ En el target group → **Targets**, las dos instancias tienen que estar en **hea
 
 - el backend esté corriendo (`pm2 status` o `systemctl status semisocial`);
 - responda en la instancia: `curl http://127.0.0.1:5000/api/health`;
-- `sg-backend-g6` deje entrar el puerto 5000 desde `sg-elb-g6`.
+- `g6-sg-backend` deje entrar el puerto 5000 desde `g6-sg-elb`.
 
 Después, desde la compu (en Git Bash):
 

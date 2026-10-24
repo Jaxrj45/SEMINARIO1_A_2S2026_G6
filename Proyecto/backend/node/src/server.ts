@@ -4,6 +4,10 @@ import cors from 'cors';
 import { pool } from './config/db';
 import { errorHandler, notFound } from './middleware/errors';
 import healthRoutes from './routes/health';
+import authRoutes from './routes/auth';
+import userRoutes from './routes/users';
+import friendRoutes from './routes/friends';
+import commentRoutes from './routes/comments';
 
 const app = express();
 app.disable('x-powered-by');
@@ -13,11 +17,13 @@ app.use(express.json({ limit: '3mb' }));
 
 app.use('/api/health', healthRoutes);
 
-// Aqui se van montando las rutas de cada modulo:
-// app.use('/api/auth', authRoutes);
-// app.use('/api/users', userRoutes);
-// app.use('/api/friends', friendRoutes);
-// app.use('/api/posts/:postId/comments', commentRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/friends', friendRoutes);
+// Va antes de /api/posts para que /api/posts/:postId/comments no lo agarre el router de publicaciones
+app.use('/api/posts/:postId/comments', commentRoutes);
+
+// Rutas de I2 (José):
 // app.use('/api/posts', postRoutes);
 // app.use('/api/tags', tagRoutes);
 // app.use('/api/translate', translateRoutes);

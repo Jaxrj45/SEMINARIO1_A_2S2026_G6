@@ -1,0 +1,19 @@
+# Secretos y entornos
+.env
+*.pem
+*.key
+secrets.*
+
+# Eventos de prueba generados con fotos reales
+evento_post.json
+evento_face.json
+evento.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Sistema
+.DS_Store
+Thumbs.db

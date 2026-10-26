@@ -23,21 +23,19 @@ Quién hace qué, según el plan de división:
   - [x] `g6-sg-backend`: 5000 solo desde `g6-sg-elb` y SSH 22 desde mi IP.
   - [x] `g6-sg-rds`: MySQL 3306 desde `g6-sg-backend` y desde mi IP (para correr los scripts).
 - [x] Pasarle los security groups a I2, porque los necesita para el balanceador.
-- [ ] Crear la RDS MySQL en la VPC por defecto con `g6-sg-rds` y correr `schema.sql` y `seed.sql`. Seguir [docs/configuracion-rds.md](docs/configuracion-rds.md).
-- [ ] Revisar que mi usuario IAM tenga `G6-PassRole-EC2` y que el rol `Semi-EC2-AppRole` tenga `G6-EC2-App` (ver [docs/configuracion-iam.md](docs/configuracion-iam.md)).
+- [x] Crear la RDS MySQL en la VPC por defecto con `g6-sg-rds` y correr `schema.sql` y `seed.sql`. Seguir [docs/configuracion-rds.md](docs/configuracion-rds.md).
+- [x] Revisar que mi usuario IAM tenga `G6-PassRole-EC2` y que el rol `Semi-EC2-AppRole` tenga `G6-EC2-App` (ver [docs/configuracion-iam.md](docs/configuracion-iam.md)).
 - [ ] Crear la EC2 No. 1 (Node) con `g6-sg-backend` y el rol `Semi-EC2-AppRole`, y dejarla respondiendo `/api/health`. Seguir [backend/node/README.md](backend/node/README.md).
 - [x] Esqueleto del backend Node en `backend/node/` (Express + TypeScript): conexión a MySQL en UTC, middleware del JWT, funciones para armar las respuestas `ok` y `fail`, manejo de errores, CORS y `GET /api/health`.
-- [ ] Rutas en Node:
-  - [ ] `POST /api/auth/register`: valida, revisa el usuario en Cognito y guarda con MD5.
-  - [ ] `POST /api/auth/session`: valida el `idToken` de Cognito y devuelve nuestro token.
-  - [ ] `POST /api/auth/face-session`: llama a `/face/compare` de I3 y devuelve nuestro token.
-  - [ ] `GET /api/users/me` y `PUT /api/users/me`: el PUT revisa la contraseña, actualiza RDS y luego Cognito.
-  - [ ] `GET /api/users/discover`.
-  - [ ] `POST /api/friends/requests`, `GET /api/friends/requests`, `PUT /api/friends/requests/{id}` y `GET /api/friends`.
-  - [ ] `GET` y `POST /api/posts/{id}/comments`.
-- [ ] Probar cada ruta a mano (Postman o curl) y ver que responda como los ejemplos de `contracts/examples/`.
-- [ ] Pasar mis rutas a `backend/python/` sobre el esqueleto de I2, con respuestas idénticas (fechas con `Z`, `true`/`false`, mismos códigos de error).
-- [ ] Hacer las mismas peticiones a mano a Node y a Python y ver que respondan igual.
+- [x] Rutas en Node:
+  - [x] `POST /api/auth/register`: valida, revisa el usuario en Cognito y guarda con MD5.
+  - [x] `POST /api/auth/session`: valida el `idToken` de Cognito y devuelve nuestro token.
+  - [x] `POST /api/auth/face-session`: llama a `/face/compare` de I3 y devuelve nuestro token.
+  - [x] `GET /api/users/me` y `PUT /api/users/me`: el PUT revisa la contraseña, actualiza RDS y luego Cognito.
+  - [x] `GET /api/users/discover`.
+  - [x] `POST /api/friends/requests`, `GET /api/friends/requests`, `PUT /api/friends/requests/{id}` y `GET /api/friends`.
+  - [x] `GET` y `POST /api/posts/{id}/comments`.
+- [x] Pasar mis rutas a `backend/python/` sobre el esqueleto de I2, con respuestas idénticas (fechas con `Z`, `true`/`false`, mismos códigos de error).
 - [ ] Subir la versión final a la EC2 No. 1 y conectarla a la RDS.
 - [ ] Probar con el frontend de verdad: registro, verificación del correo, login, perfil, amigos y comentarios.
 - [ ] Armar el `README.md` final con las partes de todos.
@@ -49,7 +47,7 @@ Quién hace qué, según el plan de división:
 ## 2. Integrante 2 (José)
 
 - [ ] Políticas, roles y usuarios IAM con la cuenta raíz. Seguir [docs/configuracion-iam.md](docs/configuracion-iam.md).
-- [ ] Esqueleto del backend Python en `backend/python/` (Flask): conexión a MySQL, JWT, respuestas `ok` y `fail`, CORS y `/api/health`.
+- [x] Esqueleto del backend Python en `backend/python/` (Flask): conexión a MySQL, JWT, respuestas `ok` y `fail`, CORS y `/api/health`. (Lo hizo Derek junto con sus rutas.)
 - [ ] EC2 No. 2 con `g6-sg-backend`, Target Group (puerto 5000, health check `/api/health`) y balanceador con `g6-sg-elb`. Seguir [docs/configuracion-balanceador.md](docs/configuracion-balanceador.md).
 - [ ] En Node: `GET` y `POST /api/posts`, `GET /api/tags` y `POST /api/translate`.
 - [ ] Chat en Node y en Python (`GET /api/chat/{friendId}/messages` y `WS /api/ws`).

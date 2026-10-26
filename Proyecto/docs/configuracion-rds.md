@@ -8,8 +8,10 @@ Las líneas que dicen **(captura)** son las que van al README final.
 
 ## Índice
 
-1. [Crear la RDS](#1-crear-la-rds)
-2. [Correr los scripts de la base](#2-correr-los-scripts-de-la-base)
+- [Configuración de la RDS MySQL](#configuración-de-la-rds-mysql)
+  - [Índice](#índice)
+  - [1. Crear la RDS](#1-crear-la-rds)
+  - [2. Correr los scripts de la base](#2-correr-los-scripts-de-la-base)
 
 ## 1. Crear la RDS
 
@@ -64,4 +66,4 @@ La RDS ya viene en UTC, así que no hay que cambiar la zona horaria.
 
 Los datos de conexión van en el `.env` de cada backend, como se explica en su README.
 
-**(captura)** Resultado de `SHOW TABLES;` con las 7 tablas.
+![RDS tablas](img/rds-tablas.png.png)

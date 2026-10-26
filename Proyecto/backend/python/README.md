@@ -76,7 +76,7 @@ mkdir -p ~/app
 Subir a `~/app`, por SFTP (Termius u otro cliente) o con `scp`, todo lo de `Proyecto/backend/python` menos `venv/`, `__pycache__/` y el `.env` local. Con `scp`, desde PowerShell en `Proyecto\backend\python`:
 
 ```powershell
-scp -i <llave>.pem -r app.py config.py db.py requirements.txt routes utils ubuntu@<IP-publica>:~/app/
+scp -i <llave>.pem -r app.py config.py db.py requirements.txt routes services utils ubuntu@<IP-publica>:~/app/
 ```
 
 Entorno virtual y dependencias:
@@ -93,6 +93,7 @@ Estructura final:
 ├── .env
 ├── app.py, config.py, db.py, requirements.txt
 ├── routes/
+├── services/
 ├── utils/
 └── venv/
 ```

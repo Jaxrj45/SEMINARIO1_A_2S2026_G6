@@ -24,11 +24,17 @@ export async function compareFace(
   }
 
   const body: any = await response.json().catch(() => null);
+  // La Lambda responde { ok, data } o { ok: false, error: { code } }; tambien se acepta el formato del contrato
+  const succeeded = body?.ok === true || body?.status === 'success';
+  const errorCode = body?.error?.code || body?.data?.code;
 
-  if (response.status === 422 || body?.data?.code === 'NO_FACE_DETECTED') {
+  if (response.status === 422 || errorCode === 'NO_FACE_DETECTED') {
     throw new ApiError(422, 'NO_FACE_DETECTED', 'No se detectó un rostro en la imagen');
   }
-  if (!response.ok || body?.status !== 'success') {
+  if (errorCode === 'INVALID_IMAGE') {
+    throw new ApiError(400, 'UNSUPPORTED_MEDIA_TYPE', 'La foto debe ser JPG o PNG');
+  }
+  if (!response.ok || !succeeded) {
     console.error('[face] /face/compare respondio', response.status, body);
     throw new ApiError(502, 'UPSTREAM_ERROR', 'No se pudo comparar el rostro');
   }

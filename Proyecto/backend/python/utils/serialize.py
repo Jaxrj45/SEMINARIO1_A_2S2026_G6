@@ -46,3 +46,25 @@ def comment_to_json(row):
         "text": row["texto"],
         "createdAt": to_iso(row["creado_en"]),
     }
+
+
+def message_to_json(row):
+    return {
+        "id": row["id"],
+        "fromUserId": row["emisor_id"],
+        "toUserId": row["receptor_id"],
+        "text": row["texto"],
+        "createdAt": to_iso(row["creado_en"]),
+    }
+
+
+def post_to_json(row, labels):
+    return {
+        "id": row["id"],
+        "author": user_summary(row, "u_"),
+        "description": row["descripcion"],
+        "imageUrl": s3_url(row["imagen_key"]),
+        "labels": labels,
+        "commentCount": int(row["comment_count"]),
+        "createdAt": to_iso(row["creado_en"]),
+    }

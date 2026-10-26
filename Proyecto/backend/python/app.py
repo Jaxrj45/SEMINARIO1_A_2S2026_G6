@@ -7,10 +7,15 @@ from werkzeug.exceptions import HTTPException
 from config import Config
 from db import check_connection
 from routes.auth import auth_bp
+from routes.chat import chat_bp
 from routes.comments import comments_bp
 from routes.friends import friends_bp
 from routes.health import health_bp
+from routes.posts import posts_bp
+from routes.tags import tags_bp
+from routes.translate import translate_bp
 from routes.users import users_bp
+from services.chat_socket import init_chat
 from utils.http import ApiError, fail
 
 
@@ -57,11 +62,12 @@ def create_app():
     app.register_blueprint(friends_bp)
     app.register_blueprint(comments_bp)
 
-    # Rutas de I2 (José):
-    # app.register_blueprint(posts_bp)
-    # app.register_blueprint(tags_bp)
-    # app.register_blueprint(translate_bp)
-    # app.register_blueprint(chat_bp)
+    app.register_blueprint(posts_bp)
+    app.register_blueprint(tags_bp)
+    app.register_blueprint(translate_bp)
+    app.register_blueprint(chat_bp)
+    # El chat (WS /api/ws) usa el mismo puerto que la API
+    init_chat(app)
 
     register_error_handlers(app)
     return app

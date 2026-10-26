@@ -143,7 +143,7 @@ El dueño es el integrante que lo programa en Node y en Python según el plan de
 
 | Dueño | Método y ruta | Necesita token | Responde | Ejemplo |
 |---|---|---|---|---|
-| 1 y 2 | `GET /api/health` | No | 200 | [health.json](examples/api/health.json) |
+| 1 y 2 | `GET /api/health` | No | 200 | [health.json](examples/health.json) |
 | 1 | `POST /api/auth/register` | No | 201 | [auth.json](examples/auth.json) |
 | 1 | `POST /api/auth/session` | No | 200 | [auth.json](examples/auth.json) |
 | 1 | `POST /api/auth/face-session` | No | 200 | [auth.json](examples/auth.json) |

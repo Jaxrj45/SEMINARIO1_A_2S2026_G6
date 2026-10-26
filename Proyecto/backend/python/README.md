@@ -117,7 +117,7 @@ chmod 600 ~/app/.env
 | `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID` | Los pasa I4 |
 | `UPLOAD_API` | URL del stage de API Gateway, sin `/` al final (la pasa I3) |
 | `FACE_API_KEY` | API key de `/face/compare` (la pasa I3) |
-| `S3_BUCKET_URL` | `https://semi1proyecto-g6.s3.amazonaws.com` |
+| `S3_BUCKET_URL` | `https://semi1proyecto--g6.s3.amazonaws.com` |
 | `PORT` | `5000` |
 
 El `.env` es el mismo en las dos EC2 y no se sube a GitHub.

@@ -10,10 +10,15 @@ Las líneas que dicen **(captura)** son las que van al README final.
 
 ## Índice
 
-1. [Políticas propias](#1-políticas-propias)
-2. [Roles](#2-roles)
-3. [Usuarios](#3-usuarios)
-4. [Servicios que no necesitan configuración](#4-servicios-que-no-necesitan-configuración)
+- [Configuración de IAM](#configuración-de-iam)
+  - [Índice](#índice)
+  - [1. Políticas propias](#1-políticas-propias)
+    - [1.1 `G6-EC2-App`](#11-g6-ec2-app)
+    - [1.2 `G6-Lambda-Imagenes`](#12-g6-lambda-imagenes)
+    - [1.3 `G6-PassRole-EC2`](#13-g6-passrole-ec2)
+  - [2. Roles](#2-roles)
+  - [3. Usuarios](#3-usuarios)
+  - [4. Servicios que no necesitan configuración](#4-servicios-que-no-necesitan-configuración)
 
 ## 1. Políticas propias
 
@@ -128,7 +133,9 @@ Pasos para cada uno:
 
 Cuando el use case es EC2, AWS crea también el *instance profile* con el mismo nombre, que es lo que aparece en la lista al crear la instancia.
 
-**(captura)** Cada rol con su pestaña **Permissions**.
+![Semi-EC2-AppRole](img/role-ec2-app.png)
+![Semi-Lambda-UploadRole](img/role-lambda-upload.png)
+![Semi-LexFulfillment-Role](img/role-lex-fulfillment.png)
 
 ## 3. Usuarios
 
@@ -158,7 +165,11 @@ Notas:
 - `AmazonRekognitionReadOnlyAccess` es solo para probar Rekognition desde la consola; las Lambdas usan su rol.
 - El Identity Pool de Cognito crea su propio rol, y eso necesita permisos de IAM que ningún usuario tiene. Ese paso se hace con la cuenta raíz (ver [configuracion-cognito.md](configuracion-cognito.md)).
 
-**(captura)** Lista de usuarios y la pestaña **Permissions** de cada uno.
+![lista usuarios](img/iam-usuarios.png)
+![derek](img/iam-derek.png)
+![jax](img/iam-jax.png)
+![jose](img/iam-jose.png)
+![miguel](img/iam-miguel.png)
 
 ## 4. Servicios que no necesitan configuración
 

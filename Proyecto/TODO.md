@@ -49,9 +49,9 @@ Quién hace qué, según el plan de división:
 - [ ] Políticas, roles y usuarios IAM con la cuenta raíz. Seguir [docs/configuracion-iam.md](docs/configuracion-iam.md).
 - [x] Esqueleto del backend Python en `backend/python/` (Flask): conexión a MySQL, JWT, respuestas `ok` y `fail`, CORS y `/api/health`. (Lo hizo Derek junto con sus rutas.)
 - [ ] EC2 No. 2 con `g6-sg-backend`, Target Group (puerto 5000, health check `/api/health`) y balanceador con `g6-sg-elb`. Seguir [docs/configuracion-balanceador.md](docs/configuracion-balanceador.md).
-- [ ] En Node: `GET` y `POST /api/posts`, `GET /api/tags` y `POST /api/translate`.
-- [ ] Chat en Node y en Python (`GET /api/chat/{friendId}/messages` y `WS /api/ws`).
-- [ ] Pasar posts, tags y translate a Python.
+- [x] En Node: `GET` y `POST /api/posts`, `GET /api/tags` y `POST /api/translate`.
+- [x] Chat en Node y en Python (`GET /api/chat/{friendId}/messages` y `WS /api/ws`).
+- [x] Pasar posts, tags y translate a Python.
 - [ ] Subir la versión final a la EC2 No. 2, poner las variables de entorno en las dos EC2 y ver que el Target Group las tenga a las dos en `healthy`.
 - [ ] Apagar la EC2 No. 2 para la prueba de falla.
 - [ ] Capturas del balanceador y del Target Group.

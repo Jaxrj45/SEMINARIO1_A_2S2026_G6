@@ -24,12 +24,18 @@ def compare_face(source_base64, target_key):
         body = response.json()
     except ValueError:
         body = None
-    data = body.get("data") if isinstance(body, dict) else None
-    data = data if isinstance(data, dict) else {}
+    body = body if isinstance(body, dict) else {}
+    data = body.get("data") if isinstance(body.get("data"), dict) else {}
+    error = body.get("error") if isinstance(body.get("error"), dict) else {}
+    # La Lambda responde { ok, data } o { ok: false, error: { code } }; tambien se acepta el formato del contrato
+    succeeded = body.get("ok") is True or body.get("status") == "success"
+    error_code = error.get("code") or data.get("code")
 
-    if response.status_code == 422 or data.get("code") == "NO_FACE_DETECTED":
+    if response.status_code == 422 or error_code == "NO_FACE_DETECTED":
         raise ApiError(422, "NO_FACE_DETECTED", "No se detectó un rostro en la imagen")
-    if not response.ok or not isinstance(body, dict) or body.get("status") != "success":
+    if error_code == "INVALID_IMAGE":
+        raise ApiError(400, "UNSUPPORTED_MEDIA_TYPE", "La foto debe ser JPG o PNG")
+    if not response.ok or not succeeded:
         print("[face] /face/compare respondio", response.status_code, body)
         raise ApiError(502, "UPSTREAM_ERROR", "No se pudo comparar el rostro")
 

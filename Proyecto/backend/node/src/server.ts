@@ -8,6 +8,11 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import friendRoutes from './routes/friends';
 import commentRoutes from './routes/comments';
+import postRoutes from './routes/posts';
+import tagRoutes from './routes/tags';
+import translateRoutes from './routes/translate';
+import chatRoutes from './routes/chat';
+import { attachChat } from './services/chatSocket';
 
 const app = express();
 app.disable('x-powered-by');
@@ -23,11 +28,10 @@ app.use('/api/friends', friendRoutes);
 // Va antes de /api/posts para que /api/posts/:postId/comments no lo agarre el router de publicaciones
 app.use('/api/posts/:postId/comments', commentRoutes);
 
-// Rutas de I2 (José):
-// app.use('/api/posts', postRoutes);
-// app.use('/api/tags', tagRoutes);
-// app.use('/api/translate', translateRoutes);
-// app.use('/api/chat', chatRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/tags', tagRoutes);
+app.use('/api/translate', translateRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
@@ -36,9 +40,11 @@ app.use(errorHandler);
 pool
   .query('SELECT 1')
   .then(() => {
-    app.listen(env.port, '0.0.0.0', () => {
+    const server = app.listen(env.port, '0.0.0.0', () => {
       console.log(`[node] escuchando en el puerto ${env.port}`);
     });
+    // El chat (WS /api/ws) usa el mismo puerto que la API
+    attachChat(server);
   })
   .catch((e) => {
     console.error('No se pudo conectar a la base de datos:', e.message);

@@ -62,3 +62,38 @@ export const commentToJson = (row: ComentarioRow) => ({
   text: row.texto,
   createdAt: toIso(row.creado_en),
 });
+
+export interface PublicacionRow {
+  id: number;
+  descripcion: string | null;
+  imagen_key: string;
+  comment_count: number;
+  creado_en: Date;
+  [key: string]: any;
+}
+
+export interface MensajeRow {
+  id: number;
+  emisor_id: number;
+  receptor_id: number;
+  texto: string;
+  creado_en: Date;
+}
+
+export const messageToJson = (row: MensajeRow) => ({
+  id: row.id,
+  fromUserId: row.emisor_id,
+  toUserId: row.receptor_id,
+  text: row.texto,
+  createdAt: toIso(row.creado_en),
+});
+
+export const postToJson = (row: PublicacionRow, labels: string[]) => ({
+  id: row.id,
+  author: userSummary(row, 'u_'),
+  description: row.descripcion,
+  imageUrl: s3Url(row.imagen_key),
+  labels,
+  commentCount: Number(row.comment_count),
+  createdAt: toIso(row.creado_en),
+});

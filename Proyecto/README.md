@@ -152,7 +152,28 @@ Roles:
 
 ### EC2
 
-> Pendiente: EC2 No. 1 (I1) y EC2 No. 2 (I2).
+Las dos instancias son clones: mismo tipo, mismo security group, mismo rol y los mismos endpoints en el puerto 5000. Cada una está en una zona distinta, así el balanceador sigue funcionando aunque falle una zona.
+
+| | EC2 No. 1 | EC2 No. 2 |
+|---|---|---|
+| Nombre | `ec2-node-g6` | `ec2-python-g6` |
+| Backend | Node.js (Express + TypeScript) | Python (Flask) |
+| Proceso | PM2 (`semisocial-node`), arranca solo con `pm2 startup` | gunicorn como servicio de systemd (`semisocial`) |
+| Tipo | `t3.micro` | `t3.micro` |
+| Zona | `us-east-1c` | `us-east-1b` |
+| Security group | `g6-sg-backend` | `g6-sg-backend` |
+| Rol (instance profile) | `Semi-EC2-AppRole` | `Semi-EC2-AppRole` |
+| Guía de despliegue | [backend/node/README.md](backend/node/README.md) | [backend/python/README.md](backend/python/README.md) |
+
+Con el rol `Semi-EC2-AppRole` los backends usan Translate y Cognito sin llaves de acceso en el `.env`.
+
+![Las dos EC2 en ejecución](docs/img/CapturasIntegrante2/ec2-ambas-running.png)
+
+EC2 No. 2: rol `Semi-EC2-AppRole` y security group `g6-sg-backend`:
+
+![Seguridad de la EC2 de Python](docs/img/CapturasIntegrante2/ec2-python-seguridad.png)
+
+> Pendiente: detalle de la EC2 No. 1 (I1).
 
 ### Security groups
 
@@ -160,7 +181,58 @@ Roles:
 
 ### Load Balancer
 
-> Pendiente: target group, balanceador y prueba de falla (I2).
+Guía paso a paso: [docs/configuracion-balanceador.md](docs/configuracion-balanceador.md).
+
+| Recurso | Configuración |
+|---|---|
+| Target group `tg-semisocial-g6` | Instances, HTTP `5000`, las dos EC2 registradas |
+| Health check | `GET /api/health`, código 200, intervalo 10 s, 2 checks para healthy y 2 para unhealthy |
+| Atributos | Deregistration delay de 30 s y stickiness apagado, para que alterne entre Node y Python |
+| Balanceador `elb-semisocial-g6` | Application Load Balancer, Internet-facing, zonas `us-east-1a`, `us-east-1b` y `us-east-1c`, security group `g6-sg-elb` |
+| Listener | HTTP `80` → `tg-semisocial-g6` |
+| DNS (`API_BASE` del frontend) | `http://elb-semisocial-g6-13725760.us-east-1.elb.amazonaws.com` |
+
+El chat usa el mismo DNS (`ws://.../api/ws`). El balanceador ya acepta WebSocket; para que no corte las conexiones a los 60 s sin actividad, los backends mandan un ping cada 30 s.
+
+Balanceador activo, con su DNS y el camino listener → target group → las dos instancias en **healthy**:
+
+![Balanceador activo](docs/img/CapturasIntegrante2/elb-activo.png)
+
+Listener HTTP:80 que reenvía todo a `tg-semisocial-g6`:
+
+![Listener del balanceador](docs/img/CapturasIntegrante2/elb-listener.png)
+
+Target group con las dos instancias en **healthy**, cada una en su zona:
+
+![Target group con las dos EC2 en healthy](docs/img/CapturasIntegrante2/tg-targets.png)
+
+#### Prueba de falla
+
+Se detuvo una EC2 a la vez y se mandaron 20 peticiones a `/api/health` por el DNS del balanceador:
+
+| Paso | Resultado |
+|---|---|
+| Las dos encendidas | Reparte entre las dos (10 Node y 10 Python) |
+| `ec2-node-g6` detenida | 20 de 20 con 200, todas de Python. Feed, etiquetas, amigos y chat siguen respondiendo. |
+| `ec2-node-g6` encendida | Vuelve sola (PM2) y se reparte de nuevo |
+| `ec2-python-g6` detenida | 20 de 20 con 200, todas de Node. Feed, etiquetas, amigos y chat siguen respondiendo. |
+| `ec2-python-g6` encendida | Vuelve sola (systemd) y se reparte de nuevo |
+
+`ec2-python-g6` detenida:
+
+![EC2 de Python detenida](docs/img/CapturasIntegrante2/falla-python-detenida.png)
+
+El target group la marca como **unused** y solo queda Node en healthy:
+
+![Target group con una sola instancia healthy](docs/img/CapturasIntegrante2/falla-python-tg.png)
+
+La aplicación sigue respondiendo por el DNS del balanceador, ahora desde Node:
+
+![Health check por el balanceador respondiendo desde Node](docs/img/CapturasIntegrante2/falla-python-app.png)
+
+Al encenderla otra vez, el backend se levanta solo y el target group la vuelve a poner en healthy:
+
+![EC2 de Python encendida otra vez](docs/img/CapturasIntegrante2/falla-python-encendida.png)
 
 ### RDS
 
@@ -190,8 +262,8 @@ Roles:
 
 | Prueba | Resultado |
 | ------ | --------- |
-| Peticiones a `/api/health` por el balanceador | |
-| Con una EC2 apagada, la app sigue funcionando | |
+| Peticiones a `/api/health` por el balanceador | Reparte entre Node y Python (10 y 10 de 20). Ver [Load Balancer](#load-balancer). |
+| Con una EC2 apagada, la app sigue funcionando | Sí, con cualquiera de las dos detenida: 20 de 20 peticiones con 200. Ver [Prueba de falla](#prueba-de-falla). |
 | Registro con verificación de correo | |
 | Login con la cara | |
 | Chat entre dos navegadores | |

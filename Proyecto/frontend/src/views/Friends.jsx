@@ -188,7 +188,8 @@ export default function Friends() {
                 >
                   <div className="flex items-center gap-3">
                     <img
-                      src={u.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                      src={u.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.fullName || 'User')}&background=4f46e5&color=fff`}
+                      onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(u.fullName || 'User')}&background=4f46e5&color=fff`; }}
                       alt={u.fullName}
                       className="w-12 h-12 rounded-full object-cover border border-zinc-700"
                     />
@@ -241,7 +242,8 @@ export default function Friends() {
                   >
                     <div className="flex items-center gap-3">
                       <img
-                        src={req.fromUser?.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                        src={req.fromUser?.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.fromUser?.fullName || 'User')}&background=4f46e5&color=fff`}
+                        onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(req.fromUser?.fullName || 'User')}&background=4f46e5&color=fff`; }}
                         alt={req.fromUser?.fullName}
                         className="w-11 h-11 rounded-full object-cover border border-zinc-700"
                       />
@@ -288,7 +290,8 @@ export default function Friends() {
                   >
                     <div className="flex items-center gap-3">
                       <img
-                        src={req.toUser?.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                        src={req.toUser?.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(req.toUser?.fullName || 'User')}&background=4f46e5&color=fff`}
+                        onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(req.toUser?.fullName || 'User')}&background=4f46e5&color=fff`; }}
                         alt={req.toUser?.fullName}
                         className="w-10 h-10 rounded-full object-cover border border-zinc-700"
                       />
@@ -328,7 +331,8 @@ export default function Friends() {
                 >
                   <div className="flex items-center gap-3">
                     <img
-                      src={f.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                      src={f.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.fullName || 'User')}&background=4f46e5&color=fff`}
+                      onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(f.fullName || 'User')}&background=4f46e5&color=fff`; }}
                       alt={f.fullName}
                       className="w-12 h-12 rounded-full object-cover border border-zinc-700"
                     />

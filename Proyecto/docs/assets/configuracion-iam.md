@@ -1,4 +1,4 @@
-[ ← Regresar ](../README.md)
+[ ← Regresar ](../../README.md)
 
 # Configuración de IAM
 
@@ -133,9 +133,9 @@ Pasos para cada uno:
 
 Cuando el use case es EC2, AWS crea también el *instance profile* con el mismo nombre, que es lo que aparece en la lista al crear la instancia.
 
-![Semi-EC2-AppRole](img/role-ec2-app.png)
-![Semi-Lambda-UploadRole](img/role-lambda-upload.png)
-![Semi-LexFulfillment-Role](img/role-lex-fulfillment.png)
+![Semi-EC2-AppRole](../img/role-ec2-app.png)
+![Semi-Lambda-UploadRole](../img/role-lambda-upload.png)
+![Semi-LexFulfillment-Role](../img/role-lex-fulfillment.png)
 
 ## 3. Usuarios
 
@@ -165,11 +165,11 @@ Notas:
 - `AmazonRekognitionReadOnlyAccess` es solo para probar Rekognition desde la consola; las Lambdas usan su rol.
 - El Identity Pool de Cognito crea su propio rol, y eso necesita permisos de IAM que ningún usuario tiene. Ese paso se hace con la cuenta raíz (ver [configuracion-cognito.md](configuracion-cognito.md)).
 
-![lista usuarios](img/iam-usuarios.png)
-![derek](img/iam-derek.png)
-![jax](img/iam-jax.png)
-![jose](img/iam-jose.png)
-![miguel](img/iam-miguel.png)
+![lista usuarios](../img/iam-usuarios.png)
+![derek](../img/iam-derek.png)
+![jax](../img/iam-jax.png)
+![jose](../img/iam-jose.png)
+![miguel](../img/iam-miguel.png)
 
 ## 4. Servicios que no necesitan configuración
 

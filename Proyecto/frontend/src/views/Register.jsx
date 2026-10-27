@@ -13,12 +13,13 @@ import {
   ShieldCheckIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register, confirmVerification } = useAuth();
+  const { register, confirmVerification, resendVerificationCode } = useAuth();
 
   const [step, setStep] = useState(1);
 
@@ -92,7 +93,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await register({
+      const regResult = await register({
         username: formData.username.trim().toLowerCase(),
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
@@ -102,7 +103,11 @@ export default function Register() {
         photoFileName: `${formData.username.trim().toLowerCase()}-profile.jpg`
       });
 
-      setSuccessMsg('Se ha enviado un código de verificación a tu correo electrónico.');
+      if (regResult?.alreadyExists) {
+        setSuccessMsg(`El usuario '${formData.username.trim()}' ya tiene un registro en Cognito. Ingresa el código recibido en tu correo.`);
+      } else {
+        setSuccessMsg('Se ha enviado un código de verificación de 6 dígitos a tu correo electrónico.');
+      }
       setStep(2);
     } catch (err) {
       console.error('Error al registrar usuario:', err);
@@ -119,15 +124,40 @@ export default function Register() {
       return;
     }
 
+    if (!formData.username.trim()) {
+      setError('Debes ingresar tu nombre de usuario para confirmar.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       await confirmVerification(formData.username.trim().toLowerCase(), verificationCode.trim());
-      navigate('/login');
+      navigate('/login', {
+        state: { message: 'Cuenta verificada exitosamente en Cognito. Ya puedes iniciar sesión.' }
+      });
     } catch (err) {
       console.error('Error al verificar código:', err);
       setError(err.message || 'Código de verificación inválido o expirado.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!formData.username.trim()) {
+      setError('Ingresa tu nombre de usuario para reenviar el código.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await resendVerificationCode(formData.username.trim().toLowerCase());
+      setSuccessMsg('Se ha enviado un nuevo código de 6 dígitos a tu correo electrónico.');
+    } catch (err) {
+      console.error('Error al reenviar código:', err);
+      setError(err.message || 'Error al reenviar código de verificación.');
     } finally {
       setLoading(false);
     }
@@ -144,10 +174,10 @@ export default function Register() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white">
-                {step === 1 ? 'Crear Cuenta Académica' : 'Verificación de Correo'}
+                {step === 1 ? 'Crear Cuenta Académica' : 'Verificación de Correo (Cognito)'}
               </h1>
               <p className="text-xs text-zinc-400">
-                {step === 1 ? 'Plataforma oficial Semi-Social · Facultad de Ingeniería' : `Código enviado a ${formData.email}`}
+                {step === 1 ? 'Plataforma oficial Semi-Social · Facultad de Ingeniería' : `Código de 6 dígitos enviado a tu correo`}
               </p>
             </div>
           </div>
@@ -158,9 +188,24 @@ export default function Register() {
         </div>
 
         {error && (
-          <div className="p-3.5 bg-rose-950/40 border border-rose-900/60 text-rose-300 text-xs rounded-xl flex items-start gap-2.5">
-            <ExclamationCircleIcon className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-            <span className="leading-relaxed">{error}</span>
+          <div className="p-3.5 bg-rose-950/40 border border-rose-900/60 text-rose-300 text-xs rounded-xl flex flex-col gap-2">
+            <div className="flex items-start gap-2.5">
+              <ExclamationCircleIcon className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+              <span className="leading-relaxed">{error}</span>
+            </div>
+            {error.includes('already exists') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setSuccessMsg('Ingresa el código que recibiste en tu correo electrónico.');
+                  setStep(2);
+                }}
+                className="self-start text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 underline underline-offset-2 cursor-pointer"
+              >
+                ¿Ya recibiste el código? Haz clic aquí para ingresarlo
+              </button>
+            )}
           </div>
         )}
 
@@ -367,6 +412,19 @@ export default function Register() {
                 <span>Crear Cuenta</span>
               )}
             </button>
+
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setStep(2);
+                }}
+                className="text-xs text-zinc-400 hover:text-indigo-400 transition cursor-pointer underline underline-offset-2"
+              >
+                ¿Ya te registraste y tienes un código de verificación pendiente? Ingresar código aquí
+              </button>
+            </div>
           </form>
         )}
 
@@ -375,16 +433,52 @@ export default function Register() {
           <form onSubmit={handleVerifySubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                Código de Confirmación de Cognito
+                Nombre de Usuario
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
+                  <UserIcon className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  placeholder="miguel"
+                  required
+                  className="w-full bg-zinc-900 border border-zinc-800 focus:border-indigo-500 rounded-xl px-4 py-2 text-sm text-white font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                Código de Confirmación de Cognito (6 dígitos)
               </label>
               <input
                 type="text"
+                maxLength={6}
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
                 placeholder="123456"
                 required
-                className="w-full bg-zinc-900 border border-zinc-800 focus:border-indigo-500 rounded-xl px-4 py-3 text-center text-xl tracking-widest text-white font-mono"
+                className="w-full bg-zinc-900 border border-zinc-800 focus:border-indigo-500 rounded-xl px-4 py-3 text-center text-2xl tracking-[0.3em] text-indigo-400 font-mono font-bold"
               />
+              <p className="text-[11px] text-zinc-500 mt-1.5 text-center">
+                Revisa el correo enviado por Amazon Cognito ({formData.email || 'tu bandeja de entrada'})
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-1">
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={loading}
+                className="text-indigo-400 hover:text-indigo-300 transition cursor-pointer underline underline-offset-2 flex items-center gap-1"
+              >
+                <ArrowPathIcon className="w-3.5 h-3.5" />
+                <span>¿Código expirado o inválido? Reenviar nuevo código</span>
+              </button>
             </div>
 
             <button
@@ -404,7 +498,10 @@ export default function Register() {
 
             <button
               type="button"
-              onClick={() => setStep(1)}
+              onClick={() => {
+                setError(null);
+                setStep(1);
+              }}
               className="w-full py-2 text-xs text-zinc-400 hover:text-zinc-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <ArrowLeftIcon className="w-3.5 h-3.5" />
@@ -428,7 +525,6 @@ export default function Register() {
           setPhotoBase64(dataUrl);
           setError(null);
         }}
-        title="Capturar Foto de Perfil con Webcam"
       />
     </div>
   );

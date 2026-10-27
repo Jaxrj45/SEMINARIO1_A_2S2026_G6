@@ -1,4 +1,4 @@
-[ ← Regresar ](../README.md)
+[ ← Regresar ](../../README.md)
 
 # Configuración de los security groups
 
@@ -82,6 +82,6 @@ Son 3: uno para el balanceador, uno para las EC2 y uno para la RDS. Se crean en 
 | `g6-sg-backend` | Las dos EC2 |
 | `g6-sg-rds` | La RDS ([configuracion-rds.md](configuracion-rds.md)) |
 
-![g6-sg-backend](img/sg-backend.png)
-![g6-sg-elb](img/sg-elb.png)
-![g6-sg-rds](img/sg-rds.png)
+![g6-sg-backend](../img/sg-backend.png)
+![g6-sg-elb](../img/sg-elb.png)
+![g6-sg-rds](../img/sg-rds.png)

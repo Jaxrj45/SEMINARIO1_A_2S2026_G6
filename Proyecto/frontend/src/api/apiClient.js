@@ -40,8 +40,22 @@ export async function apiRequest(endpoint, options = {}) {
       };
     }
 
-    // Normalizar respuestas no estándar (p.ej. de API Gateway o ALB)
-    if (!result.status) {
+    // Normalizar respuestas de Lambdas que devuelven { ok: true/false, data: ... }
+    if (result.ok !== undefined) {
+      if (result.ok) {
+        result = {
+          status: 'success',
+          message: result.message || 'Operación exitosa',
+          data: result.data || {}
+        };
+      } else {
+        result = {
+          status: 'error',
+          message: result.error?.message || result.message || 'Error en la petición',
+          data: result.error || { code: 'LAMBDA_ERROR' }
+        };
+      }
+    } else if (!result.status) {
       if (response.ok) {
         result = {
           status: 'success',

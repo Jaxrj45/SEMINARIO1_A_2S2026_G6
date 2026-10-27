@@ -1,4 +1,4 @@
-[ ← Regresar ](../README.md)
+[ ← Regresar ](../../README.md)
 
 # Configuración de los buckets de S3
 

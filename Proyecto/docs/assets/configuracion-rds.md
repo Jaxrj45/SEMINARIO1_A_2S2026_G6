@@ -1,4 +1,4 @@
-[ ← Regresar ](../README.md)
+[ ← Regresar ](../../README.md)
 
 # Configuración de la RDS MySQL
 
@@ -66,4 +66,4 @@ La RDS ya viene en UTC, así que no hay que cambiar la zona horaria.
 
 Los datos de conexión van en el `.env` de cada backend, como se explica en su README.
 
-![RDS tablas](img/rds-tablas.png.png)
+![RDS tablas](../img/rds-tablas.png)

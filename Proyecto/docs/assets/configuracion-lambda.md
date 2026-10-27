@@ -1,4 +1,4 @@
-[ ← Regresar ](../README.md)
+[ ← Regresar ](../../README.md)
 
 # Configuración de las funciones Lambda
 
@@ -93,7 +93,7 @@ Antes de conectarlas a API Gateway se pueden probar solas.
 
 El evento tiene la misma forma que manda API Gateway: el JSON de la petición va como texto dentro de `body`.
 
-La respuesta tiene que tener `statusCode` 200 o 201 y en `body` el formato del [contrato](../contracts/README.md) (`status`, `message` y `data`). En el caso de `upload-profile` y `upload-post`, la imagen tiene que aparecer en su carpeta del bucket.
+La respuesta tiene que tener `statusCode` 200 o 201 y en `body` el formato del [contrato](../../contracts/README.md) (`status`, `message` y `data`). En el caso de `upload-profile` y `upload-post`, la imagen tiene que aparecer en su carpeta del bucket.
 
 **(captura)** Resultado de cada prueba y las imágenes en el bucket.
 

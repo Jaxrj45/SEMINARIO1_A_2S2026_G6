@@ -65,7 +65,7 @@ export default function Navbar() {
             className="flex items-center gap-2.5 p-1.5 pr-3 rounded-full hover:bg-zinc-800 border border-transparent hover:border-zinc-700 transition"
           >
             <img
-              src={user?.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+              src={user?.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=4f46e5&color=fff`}
               alt={user?.fullName || 'Usuario'}
               className="w-7 h-7 rounded-full object-cover border border-zinc-700"
             />

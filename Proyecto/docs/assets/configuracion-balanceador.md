@@ -1,10 +1,10 @@
-[ ← Regresar ](../README.md)
+[ ← Regresar ](../../README.md)
 
 # Configuración del balanceador
 
 Todo se hace desde la consola web de AWS, en la región **us-east-1**, en la sección **EC2**. Antes hay que tener:
 
-- Las dos EC2 creadas y respondiendo `/api/health` en el puerto 5000 ([backend/node/README.md](../backend/node/README.md) y [backend/python/README.md](../backend/python/README.md)).
+- Las dos EC2 creadas y respondiendo `/api/health` en el puerto 5000 ([backend/node/README.md](../../backend/node/README.md) y [backend/python/README.md](../../backend/python/README.md)).
 - Los security groups `g6-sg-elb` y `g6-sg-backend` ([configuracion-security-groups.md](configuracion-security-groups.md)).
 
 Las líneas que dicen **(captura)** son las que van al README final.

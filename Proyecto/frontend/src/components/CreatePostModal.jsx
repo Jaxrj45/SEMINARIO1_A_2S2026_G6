@@ -77,9 +77,14 @@ export default function CreatePostModal({ isOpen, onClose, onPostCreated }) {
         throw new Error(postRes.message || 'Error al crear la publicación');
       }
 
+      const createdPost = {
+        ...(postRes.data || {}),
+        localPreview: photoBase64
+      };
+
       setDescription('');
       setPhotoBase64(null);
-      if (onPostCreated) onPostCreated(postRes.data);
+      if (onPostCreated) onPostCreated(createdPost);
       onClose();
     } catch (err) {
       console.error('Error al publicar:', err);

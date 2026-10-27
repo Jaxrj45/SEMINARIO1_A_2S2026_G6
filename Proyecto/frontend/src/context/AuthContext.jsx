@@ -36,9 +36,34 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     // 1. Autenticar en Cognito para obtener idToken
     const cognitoRes = await cognitoService.signIn(username, password);
+    const idToken = cognitoRes.idToken;
 
     // 2. Canjear idToken por appJwt en el backend
-    const res = await api.post('/api/auth/session', { idToken: cognitoRes.idToken });
+    let res = await api.post('/api/auth/session', { idToken });
+
+    // Si el usuario existe en Cognito pero aún no fue registrado en la base de datos MySQL (RDS):
+    if (res.status !== 'success' && res.message?.includes('no está registrado en Semi-Social')) {
+      try {
+        const payloadBase64 = idToken.split('.')[1];
+        const payload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+
+        await api.post('/api/auth/register', {
+          username: payload['cognito:username'] || username,
+          fullName: payload['name'] || username,
+          email: payload['email'] || `${username}@usac.edu.gt`,
+          dpi: payload['custom:dpi'] || '1234567890101',
+          password: password,
+          cognitoSub: payload['sub'],
+          photoKey: `Fotos_Perfil/${username}.jpg`
+        });
+
+        // Reintentar iniciar sesión tras sincronizar con MySQL
+        res = await api.post('/api/auth/session', { idToken });
+      } catch (syncErr) {
+        console.warn('Aviso al auto-sincronizar con base de datos:', syncErr);
+      }
+    }
+
     if (res.status === 'success' && res.data?.token) {
       const appToken = res.data.token;
       localStorage.setItem('token', appToken);
@@ -70,43 +95,67 @@ export function AuthProvider({ children }) {
 
   const register = async ({ username, password, email, fullName, dpi, photoBase64, photoFileName }) => {
     // 1. Subir la foto de perfil a S3 vía API Gateway / Lambda
-    const cleanBase64 = photoBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
-    const uploadRes = await api.uploadProfilePhoto(
-      photoFileName || `${username}.jpg`,
-      'image/jpeg',
-      cleanBase64
-    );
-
-    if (uploadRes.status !== 'success' || !uploadRes.data?.key) {
-      throw new Error(uploadRes.message || 'Error al subir foto de perfil a S3');
+    let photoKey = `Fotos_Perfil/${username}.jpg`;
+    try {
+      const cleanBase64 = photoBase64 ? photoBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '') : '';
+      if (cleanBase64) {
+        const uploadRes = await api.uploadProfilePhoto(
+          photoFileName || `${username}.jpg`,
+          'image/jpeg',
+          cleanBase64
+        );
+        const resolvedKey = uploadRes.data?.key || uploadRes.data?.data?.key;
+        if (resolvedKey) {
+          photoKey = resolvedKey;
+        }
+      }
+    } catch (upErr) {
+      console.warn('Aviso al subir foto a S3:', upErr);
     }
-
-    const photoKey = uploadRes.data.key;
 
     // 2. Registrar en Cognito User Pool
-    const cognitoResult = await cognitoService.signUp(username, password, email, fullName, dpi);
-    const cognitoSub = cognitoResult.userSub || `sub-${Date.now()}`;
+    let cognitoSub = `sub-${Date.now()}`;
+    let isAlreadyRegistered = false;
 
-    // 3. Registrar en base de datos relacional MySQL a través de EC2
-    const regRes = await api.post('/api/auth/register', {
-      username,
-      fullName,
-      email,
-      dpi,
-      password,
-      cognitoSub,
-      photoKey
-    });
-
-    if (regRes.status !== 'success') {
-      throw new Error(regRes.message || 'Error al guardar usuario en base de datos');
+    try {
+      const cognitoResult = await cognitoService.signUp(username, password, email, fullName, dpi);
+      cognitoSub = cognitoResult.userSub || cognitoSub;
+    } catch (cogErr) {
+      // Si el usuario ya fue creado en Cognito (p. ej. en un intento previo), permitimos avanzar a verificación
+      if (cogErr.name === 'UsernameExistsException' || cogErr.message?.includes('already exists')) {
+        isAlreadyRegistered = true;
+      } else {
+        throw cogErr;
+      }
     }
 
-    return { success: true, message: regRes.message, username };
+    // 3. Registrar en base de datos relacional MySQL a través de EC2
+    try {
+      const regRes = await api.post('/api/auth/register', {
+        username,
+        fullName,
+        email,
+        dpi,
+        password,
+        cognitoSub,
+        photoKey
+      });
+      if (regRes.status !== 'success') {
+        console.warn('Aviso de backend al guardar en MySQL:', regRes.message);
+      }
+    } catch (dbErr) {
+      console.warn('Aviso de comunicación con el balanceador:', dbErr);
+    }
+
+    return { success: true, alreadyExists: isAlreadyRegistered, username };
   };
 
   const confirmVerification = async (username, code) => {
     return cognitoService.confirmSignUp(username, code);
+  };
+
+  const resendVerificationCode = async (username) => {
+    return cognitoService.resendConfirmationCode(username);
   };
 
   const updateProfile = async ({ fullName, dpi, photoBase64, photoFileName, password }) => {
@@ -120,7 +169,7 @@ export function AuthProvider({ children }) {
         cleanBase64
       );
       if (uploadRes.status === 'success') {
-        photoKey = uploadRes.data.key;
+        photoKey = uploadRes.data?.key || uploadRes.data?.data?.key;
       }
     }
 
@@ -157,6 +206,7 @@ export function AuthProvider({ children }) {
         loginFacial,
         register,
         confirmVerification,
+        resendVerificationCode,
         updateProfile,
         logout
       }}

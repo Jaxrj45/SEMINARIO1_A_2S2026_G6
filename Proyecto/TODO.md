@@ -69,7 +69,7 @@ Quién hace qué, según el plan de división:
 
 ## 4. Integrante 4 (Miguel)
 
-- [ ] Proyecto de React en `frontend/` con mocks que lean `contracts/examples/`.
+- [x] Proyecto de React en `frontend/` con mocks que lean `contracts/examples/`.
 - [ ] User Pool de Cognito con verificación por correo y los atributos `name`, `email` y `custom:dpi`. Seguir [docs/configuracion-cognito.md](docs/configuracion-cognito.md).
 - [ ] Pantallas: registro con `username` (foto por archivo o webcam), login con username y contraseña, login facial, feed y crear publicación.
 - [ ] Pantallas: comentarios, filtros, buscador de etiquetas, traducir, editar perfil, usuarios y solicitudes, chat y botón del bot.

@@ -1,0 +1,175 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../api/apiClient';
+import { cognitoService } from '../services/cognito';
+import { chatSocket } from '../services/chatSocket';
+
+const AuthContext = createContext(null);
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadUserProfile() {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await api.get('/api/users/me');
+        if (res.status === 'success' && res.data) {
+          setUser(res.data);
+          chatSocket.connect(token);
+        } else {
+          logout();
+        }
+      } catch (err) {
+        console.error('Error al cargar perfil inicial:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadUserProfile();
+  }, [token]);
+
+  const login = async (username, password) => {
+    // 1. Autenticar en Cognito para obtener idToken
+    const cognitoRes = await cognitoService.signIn(username, password);
+
+    // 2. Canjear idToken por appJwt en el backend
+    const res = await api.post('/api/auth/session', { idToken: cognitoRes.idToken });
+    if (res.status === 'success' && res.data?.token) {
+      const appToken = res.data.token;
+      localStorage.setItem('token', appToken);
+      setToken(appToken);
+      setUser(res.data.user);
+      chatSocket.connect(appToken);
+      return { success: true, user: res.data.user };
+    }
+    return { success: false, message: res.message || 'Error de inicio de sesión' };
+  };
+
+  const loginFacial = async (username, imageBase64) => {
+    // Enviar al backend para comparar contra la foto de perfil en S3 con Rekognition
+    const res = await api.post('/api/auth/face-session', { username, imageBase64 });
+    if (res.status === 'success' && res.data?.token) {
+      const appToken = res.data.token;
+      localStorage.setItem('token', appToken);
+      setToken(appToken);
+      setUser(res.data.user);
+      chatSocket.connect(appToken);
+      return { success: true, user: res.data.user };
+    }
+    return { 
+      success: false, 
+      message: res.message || 'El rostro no coincide con la foto de perfil registrada',
+      code: res.data?.code 
+    };
+  };
+
+  const register = async ({ username, password, email, fullName, dpi, photoBase64, photoFileName }) => {
+    // 1. Subir la foto de perfil a S3 vía API Gateway / Lambda
+    const cleanBase64 = photoBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+    const uploadRes = await api.uploadProfilePhoto(
+      photoFileName || `${username}.jpg`,
+      'image/jpeg',
+      cleanBase64
+    );
+
+    if (uploadRes.status !== 'success' || !uploadRes.data?.key) {
+      throw new Error(uploadRes.message || 'Error al subir foto de perfil a S3');
+    }
+
+    const photoKey = uploadRes.data.key;
+
+    // 2. Registrar en Cognito User Pool
+    const cognitoResult = await cognitoService.signUp(username, password, email, fullName, dpi);
+    const cognitoSub = cognitoResult.userSub || `sub-${Date.now()}`;
+
+    // 3. Registrar en base de datos relacional MySQL a través de EC2
+    const regRes = await api.post('/api/auth/register', {
+      username,
+      fullName,
+      email,
+      dpi,
+      password,
+      cognitoSub,
+      photoKey
+    });
+
+    if (regRes.status !== 'success') {
+      throw new Error(regRes.message || 'Error al guardar usuario en base de datos');
+    }
+
+    return { success: true, message: regRes.message, username };
+  };
+
+  const confirmVerification = async (username, code) => {
+    return cognitoService.confirmSignUp(username, code);
+  };
+
+  const updateProfile = async ({ fullName, dpi, photoBase64, photoFileName, password }) => {
+    let photoKey = undefined;
+
+    if (photoBase64) {
+      const cleanBase64 = photoBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+      const uploadRes = await api.uploadProfilePhoto(
+        photoFileName || `profile-${Date.now()}.jpg`,
+        'image/jpeg',
+        cleanBase64
+      );
+      if (uploadRes.status === 'success') {
+        photoKey = uploadRes.data.key;
+      }
+    }
+
+    const payload = {
+      fullName,
+      dpi,
+      password,
+      ...(photoKey ? { photoKey } : {})
+    };
+
+    const res = await api.put('/api/users/me', payload);
+    if (res.status === 'success' && res.data) {
+      setUser(res.data);
+      return { success: true, data: res.data };
+    }
+    return { success: false, message: res.message || 'Error al actualizar perfil' };
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+    chatSocket.disconnect();
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        isAuthenticated: !!user,
+        login,
+        loginFacial,
+        register,
+        confirmVerification,
+        updateProfile,
+        logout
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
+  }
+  return context;
+}
